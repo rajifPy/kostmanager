@@ -150,6 +150,21 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
       </div>
 
       <div className="space-y-2">
+        <Label>Kode QR Pembayaran</Label>
+        <div className="rounded-lg border bg-muted/50 p-4 flex flex-col items-center">
+          <img 
+            src="/qr-payment.jpg" 
+            alt="QR Code Pembayaran" 
+            className="w-48 h-48 object-contain"
+          />
+          <p className="text-sm text-muted-foreground mt-2">
+            BNI : 0797356663
+            a.n Liestia Arfianti
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="proof">Upload Bukti Pembayaran</Label>
         <div className="flex items-center gap-2">
           <Input
