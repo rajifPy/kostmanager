@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, CheckCircle2, Loader2 } from "lucide-react"
+import { Upload, CheckCircle2, Loader2, Download } from "lucide-react"
 import type { TenantWithPayment } from "@/lib/types"
 
 interface PaymentFormProps {
@@ -45,6 +45,15 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
       setFile(selectedFile)
       setError(null)
     }
+  }
+
+  const handleDownloadQR = () => {
+    const link = document.createElement('a')
+    link.href = '/kodeQR.jpg'
+    link.download = 'QR-Pembayaran-BNI.jpg'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,20 +161,32 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
       <div className="space-y-2">
         <Label>Kode QR Pembayaran</Label>
         <div className="rounded-lg border bg-muted/50 p-4 flex flex-col items-center">
-          <div className="w-48 h-48 bg-white rounded flex items-center justify-center">
+          <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center overflow-hidden">
             <img 
-              src="/qr-payment.jpg" 
-              alt="QR Code Pembayaran" 
+              src="/kodeQR.jpg" 
+              alt="QR Code Pembayaran BNI" 
               className="max-w-full max-h-full object-contain"
               onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement!.innerHTML = '<p class="text-sm text-muted-foreground">Gambar QR belum tersedia</p>';
+                const target = e.currentTarget as HTMLImageElement;
+                target.src = "/placeholder.svg";
+                target.alt = "QR Code tidak dapat dimuat";
               }}
             />
           </div>
-          <p className="text-sm text-muted-foreground mt-2 font-medium">
-            BNI : Nomor Rekening
-          </p>
+          <div className="mt-3 text-center">
+            <p className="text-sm font-semibold text-foreground">BNI : 0797356663</p>
+            <p className="text-xs text-muted-foreground">a.n Liestia Arfianti</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={handleDownloadQR}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Unduh QR Code
+          </Button>
         </div>
       </div>
 
