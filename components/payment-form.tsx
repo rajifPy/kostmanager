@@ -49,7 +49,7 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
 
   const handleDownloadQR = () => {
     const link = document.createElement('a')
-    link.href = '/kodeQR.jpg'
+    link.href = '/qr-payment.jpg'
     link.download = 'QR-Pembayaran-BNI.jpg'
     document.body.appendChild(link)
     link.click()
