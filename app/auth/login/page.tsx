@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Building2 } from "lucide-react"
@@ -32,8 +31,9 @@ export default function LoginPage() {
       })
       if (error) throw error
       router.push("/dashboard")
+      router.refresh()
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Terjadi kesalahan")
+      setError(error instanceof Error ? error.message : "Terjadi kesalahan saat login")
     } finally {
       setIsLoading(false)
     }
@@ -49,8 +49,8 @@ export default function LoginPage() {
           </div>
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Login</CardTitle>
-              <CardDescription>Masukkan email untuk login ke akun admin</CardDescription>
+              <CardTitle className="text-2xl">Login Admin</CardTitle>
+              <CardDescription>Masukkan kredensial admin untuk masuk ke dashboard</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin}>
@@ -64,6 +64,7 @@ export default function LoginPage() {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="grid gap-2">
@@ -74,18 +75,17 @@ export default function LoginPage() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
                     />
                   </div>
-                  {error && <p className="text-sm text-destructive">{error}</p>}
+                  {error && (
+                    <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                      {error}
+                    </div>
+                  )}
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Memproses..." : "Login"}
                   </Button>
-                </div>
-                <div className="mt-4 text-center text-sm">
-                  Belum punya akun?{" "}
-                  <Link href="/auth/sign-up" className="underline underline-offset-4">
-                    Daftar
-                  </Link>
                 </div>
               </form>
             </CardContent>
