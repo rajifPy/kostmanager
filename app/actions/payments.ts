@@ -161,7 +161,7 @@ export async function verifyPayment(id: string) {
     .update({
       status: "paid",
       paid_date: new Date().toISOString(),
-      notification_sent: false, // Will be sent by notification API
+      notification_sent: false,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -173,10 +173,14 @@ export async function verifyPayment(id: string) {
   // Mark all related reminders as sent
   await supabase.from("reminders").update({ status: "sent", sent_at: new Date().toISOString() }).eq("payment_id", id)
 
-  // Trigger notification (will be handled by API route)
+  // Trigger notification using absolute URL
   if (payment?.tenant) {
     try {
-      await fetch("/api/notifications", {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000'
+      
+      await fetch(`${baseUrl}/api/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -185,8 +189,8 @@ export async function verifyPayment(id: string) {
           paymentId: id,
         }),
       })
-    } catch {
-      // Notification failed but payment is verified
+    } catch (err) {
+      console.error("Notification error:", err)
     }
   }
 
@@ -216,10 +220,14 @@ export async function rejectPayment(id: string, reason?: string) {
     throw new Error(error.message)
   }
 
-  // Trigger notification
+  // Trigger notification using absolute URL
   if (payment?.tenant) {
     try {
-      await fetch("/api/notifications", {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000'
+      
+      await fetch(`${baseUrl}/api/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -229,8 +237,8 @@ export async function rejectPayment(id: string, reason?: string) {
           reason: reason || "Bukti pembayaran tidak valid",
         }),
       })
-    } catch {
-      // Notification failed but payment is rejected
+    } catch (err) {
+      console.error("Notification error:", err)
     }
   }
 
