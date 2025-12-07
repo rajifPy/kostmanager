@@ -9,16 +9,24 @@ export async function POST(request: Request) {
     const supabase = await createClient()
 
     // Get tenant info
-    const { data: tenant } = await supabase.from("tenants").select("*").eq("id", tenantId).single()
+    const { data: tenant, error: tenantError } = await supabase
+      .from("tenants")
+      .select("*")
+      .eq("id", tenantId)
+      .single()
 
-    if (!tenant) {
+    if (tenantError || !tenant) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
     }
 
     // Get payment info
-    const { data: payment } = await supabase.from("payments").select("*").eq("id", paymentId).single()
+    const { data: payment, error: paymentError } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("id", paymentId)
+      .single()
 
-    if (!payment) {
+    if (paymentError || !payment) {
       return NextResponse.json({ error: "Payment not found" }, { status: 404 })
     }
 
@@ -62,6 +70,7 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
 
     // Try to send notification via WhatsApp
     let notificationSent = false
+    let notificationError = null
 
     if (tenant.phone && process.env.FONNTE_API_KEY) {
       try {
@@ -77,15 +86,20 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
           }),
         })
 
+        const result = await response.json()
+        
         if (response.ok) {
           notificationSent = true
+        } else {
+          notificationError = result.reason || "WhatsApp notification failed"
         }
       } catch (e) {
-        console.error("WhatsApp notification failed:", e)
+        notificationError = e instanceof Error ? e.message : "WhatsApp notification failed"
+        console.error("WhatsApp notification error:", e)
       }
     }
 
-    // Fallback to email
+    // Fallback to email if WhatsApp fails or not configured
     if (!notificationSent && tenant.email && process.env.RESEND_API_KEY) {
       try {
         const response = await fetch("https://api.resend.com/emails", {
@@ -101,22 +115,41 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
             text: message,
           }),
         })
-        notificationSent = response.ok
+        
+        if (response.ok) {
+          notificationSent = true
+          notificationError = null
+        } else {
+          const result = await response.json()
+          notificationError = result.message || "Email notification failed"
+        }
       } catch (e) {
-        console.error("Email notification failed:", e)
+        notificationError = e instanceof Error ? e.message : "Email notification failed"
+        console.error("Email notification error:", e)
       }
     }
 
-    // Mark payment as notification sent
+    // Mark payment as notification sent (even if failed, to prevent retry loops)
     await supabase.from("payments").update({ notification_sent: true }).eq("id", paymentId)
 
     return NextResponse.json({
       success: true,
       notificationSent,
+      notificationError,
       tenant: tenant.name,
       type,
+      message: notificationSent 
+        ? "Notification sent successfully" 
+        : `Notification failed: ${notificationError || "Unknown error"}`,
     })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
+    console.error("Notification API error:", error)
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : "Unknown error",
+        success: false 
+      }, 
+      { status: 500 }
+    )
   }
 }
