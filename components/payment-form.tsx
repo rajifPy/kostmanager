@@ -153,7 +153,7 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
         <Label>Kode QR Pembayaran</Label>
         <div className="rounded-lg border bg-muted/50 p-4 flex flex-col items-center">
           <img 
-            src="/qr-payment.jpg" 
+            src="/kodeQR.jpg" 
             alt="QR Code Pembayaran" 
             className="w-48 h-48 object-contain"
           />
