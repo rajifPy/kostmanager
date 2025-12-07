@@ -4,10 +4,26 @@ import { NextResponse } from "next/server"
 // Vercel Cron config - runs daily at 8 AM WIB (1 AM UTC)
 export const revalidate = 0
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Verify cron secret for Vercel Cron Jobs
+  const authHeader = request.headers.get('authorization')
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const supabase = await createClient()
     const today = new Date().toISOString().split("T")[0]
+
+    // First, update overdue payments
+    const { data: overduePayments } = await supabase
+      .from("payments")
+      .update({ status: "overdue", updated_at: new Date().toISOString() })
+      .eq("status", "pending")
+      .lt("due_date", today)
+      .select()
+
+    console.log(`Updated ${overduePayments?.length || 0} payments to overdue status`)
 
     // Get all pending reminders for today or earlier
     const { data: reminders, error } = await supabase
@@ -55,10 +71,12 @@ export async function GET() {
 
           const result = await response.json()
 
-          if (response.ok) {
+          if (response.ok && result.status) {
             notificationSent = true
+            console.log(`WhatsApp sent to ${tenant.phone}`)
           } else {
             notificationError = result.reason || "WhatsApp failed"
+            console.error(`WhatsApp error for ${tenant.phone}:`, result)
           }
         } catch (e) {
           notificationError = e instanceof Error ? e.message : "WhatsApp error"
@@ -86,9 +104,11 @@ export async function GET() {
           if (response.ok) {
             notificationSent = true
             notificationError = null
+            console.log(`Email sent to ${tenant.email}`)
           } else {
             const result = await response.json()
             notificationError = result.message || "Email failed"
+            console.error(`Email error for ${tenant.email}:`, result)
           }
         } catch (e) {
           notificationError = e instanceof Error ? e.message : "Email error"
@@ -120,24 +140,14 @@ export async function GET() {
       })
     }
 
-    // Also update overdue payments
-    const updateOverdueResult = await supabase
-      .from("payments")
-      .update({ status: "overdue", updated_at: new Date().toISOString() })
-      .eq("status", "pending")
-      .lt("due_date", today)
-
-    if (updateOverdueResult.error) {
-      console.error("Error updating overdue payments:", updateOverdueResult.error)
-    }
-
     return NextResponse.json({
       success: true,
       processed: results.length,
       sent: results.filter(r => r.status === "sent").length,
       failed: results.filter(r => r.status === "failed").length,
       results,
-      overdueUpdated: updateOverdueResult.count || 0,
+      overdueUpdated: overduePayments?.length || 0,
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
     console.error("Reminders API error:", error)
