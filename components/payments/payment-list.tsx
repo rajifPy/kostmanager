@@ -121,92 +121,174 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
 
   return (
     <>
-      <Card>
+      {/* Desktop View */}
+      <Card className="hidden md:block">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Penyewa</TableHead>
-                <TableHead>Kamar</TableHead>
-                <TableHead>Jumlah</TableHead>
-                <TableHead>Jatuh Tempo</TableHead>
-                <TableHead>Bukti</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedPayments.map((payment) => (
-                <TableRow
-                  key={payment.id}
-                  className={payment.status === "pending" ? "bg-yellow-50/50 dark:bg-yellow-950/10" : ""}
-                >
-                  <TableCell className="font-medium">{payment.tenant?.name || "Unknown"}</TableCell>
-                  <TableCell>
-                    {payment.tenant?.room ? (
-                      <Badge variant="outline">Kamar {payment.tenant.room.room_number}</Badge>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                  <TableCell>{new Date(payment.due_date).toLocaleDateString("id-ID")}</TableCell>
-                  <TableCell>
-                    {payment.proof_url ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setViewProofPayment(payment)}
-                        className="gap-1 text-primary"
-                      >
-                        <FileImage className="h-4 w-4" />
-                        Lihat
-                      </Button>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {payment.status === "pending" && payment.proof_url && (
-                          <>
-                            <DropdownMenuItem onClick={() => setViewProofPayment(payment)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Verifikasi Bukti
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        {payment.status === "pending" && !payment.proof_url && (
-                          <DropdownMenuItem onClick={() => handleVerify(payment)}>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Tandai Lunas
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => setEditPayment(payment)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => setDeletePaymentId(payment.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Hapus
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Penyewa</TableHead>
+                  <TableHead>Kamar</TableHead>
+                  <TableHead>Jumlah</TableHead>
+                  <TableHead>Jatuh Tempo</TableHead>
+                  <TableHead>Bukti</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {sortedPayments.map((payment) => (
+                  <TableRow
+                    key={payment.id}
+                    className={payment.status === "pending" ? "bg-yellow-50/50 dark:bg-yellow-950/10" : ""}
+                  >
+                    <TableCell className="font-medium">{payment.tenant?.name || "Unknown"}</TableCell>
+                    <TableCell>
+                      {payment.tenant?.room ? (
+                        <Badge variant="outline">Kamar {payment.tenant.room.room_number}</Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell>{formatCurrency(payment.amount)}</TableCell>
+                    <TableCell>{new Date(payment.due_date).toLocaleDateString("id-ID")}</TableCell>
+                    <TableCell>
+                      {payment.proof_url ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewProofPayment(payment)}
+                          className="gap-1 text-primary"
+                        >
+                          <FileImage className="h-4 w-4" />
+                          Lihat
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {payment.status === "pending" && payment.proof_url && (
+                            <>
+                              <DropdownMenuItem onClick={() => setViewProofPayment(payment)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Verifikasi Bukti
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          {payment.status === "pending" && !payment.proof_url && (
+                            <DropdownMenuItem onClick={() => handleVerify(payment)}>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Tandai Lunas
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => setEditPayment(payment)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => setDeletePaymentId(payment.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Hapus
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Mobile View */}
+      <div className="md:hidden space-y-4">
+        {sortedPayments.map((payment) => (
+          <Card key={payment.id} className={payment.status === "pending" ? "border-yellow-500/50" : ""}>
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <p className="font-semibold">{payment.tenant?.name || "Unknown"}</p>
+                  {payment.tenant?.room && (
+                    <Badge variant="outline" className="mt-1">
+                      Kamar {payment.tenant.room.room_number}
+                    </Badge>
+                  )}
+                </div>
+                {getStatusBadge(payment.status)}
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Jumlah:</span>
+                  <span className="font-medium">{formatCurrency(payment.amount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Jatuh Tempo:</span>
+                  <span>{new Date(payment.due_date).toLocaleDateString("id-ID")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Bukti:</span>
+                  {payment.proof_url ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewProofPayment(payment)}
+                      className="h-auto p-0 text-primary"
+                    >
+                      Lihat Bukti
+                    </Button>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                {payment.status === "pending" && payment.proof_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewProofPayment(payment)}
+                    className="flex-1"
+                  >
+                    <Eye className="mr-1 h-3 w-3" />
+                    Verifikasi
+                  </Button>
+                )}
+                {payment.status === "pending" && !payment.proof_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleVerify(payment)}
+                    className="flex-1"
+                  >
+                    <CheckCircle className="mr-1 h-3 w-3" />
+                    Lunas
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => setEditPayment(payment)} className="flex-1">
+                  <Edit className="mr-1 h-3 w-3" />
+                  Edit
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDeletePaymentId(payment.id)} className="text-destructive">
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       {/* View Proof Dialog */}
       <Dialog open={!!viewProofPayment} onOpenChange={() => setViewProofPayment(null)}>
