@@ -1,3 +1,8 @@
+// ==========================================
+// FILE: app/api/notifications/route.ts
+// MASALAH: Logika notification_sent & error handling
+// ==========================================
+
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
@@ -71,9 +76,24 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
     // Try to send notification via WhatsApp
     let notificationSent = false
     let notificationError = null
+    let notificationMethod = null
 
-    if (tenant.phone && process.env.FONNTE_API_KEY) {
+    // FIX 1: Validasi format nomor telepon
+    const phoneNumber = tenant.phone?.replace(/\D/g, '') // Hapus non-digit
+    const isValidPhone = phoneNumber && phoneNumber.length >= 10 && phoneNumber.length <= 15
+
+    if (isValidPhone && process.env.FONNTE_API_KEY) {
       try {
+        // FIX 2: Pastikan nomor dimulai dengan kode negara
+        let formattedPhone = phoneNumber
+        if (phoneNumber.startsWith('0')) {
+          formattedPhone = '62' + phoneNumber.substring(1) // 08xxx -> 628xxx
+        } else if (!phoneNumber.startsWith('62')) {
+          formattedPhone = '62' + phoneNumber // xxx -> 62xxx
+        }
+
+        console.log('Sending WhatsApp to:', formattedPhone) // Debug log
+
         const response = await fetch("https://api.fonnte.com/send", {
           method: "POST",
           headers: {
@@ -81,27 +101,39 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            target: tenant.phone,
+            target: formattedPhone,
             message: message,
           }),
         })
 
         const result = await response.json()
         
-        if (response.ok) {
+        console.log('Fonnte response:', result) // Debug log
+        
+        if (response.ok && result.status) {
           notificationSent = true
+          notificationMethod = 'whatsapp'
         } else {
           notificationError = result.reason || "WhatsApp notification failed"
+          console.error('Fonnte error:', notificationError)
         }
       } catch (e) {
         notificationError = e instanceof Error ? e.message : "WhatsApp notification failed"
         console.error("WhatsApp notification error:", e)
       }
+    } else {
+      console.log('WhatsApp skipped:', { 
+        hasPhone: !!tenant.phone, 
+        isValidPhone, 
+        hasApiKey: !!process.env.FONNTE_API_KEY 
+      })
     }
 
     // Fallback to email if WhatsApp fails or not configured
     if (!notificationSent && tenant.email && process.env.RESEND_API_KEY) {
       try {
+        console.log('Sending email to:', tenant.email) // Debug log
+
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -119,9 +151,12 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
         if (response.ok) {
           notificationSent = true
           notificationError = null
+          notificationMethod = 'email'
+          console.log('Email sent successfully')
         } else {
           const result = await response.json()
           notificationError = result.message || "Email notification failed"
+          console.error('Email error:', result)
         }
       } catch (e) {
         notificationError = e instanceof Error ? e.message : "Email notification failed"
@@ -129,17 +164,23 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
       }
     }
 
-    // Mark payment as notification sent (even if failed, to prevent retry loops)
-    await supabase.from("payments").update({ notification_sent: true }).eq("id", paymentId)
+    // FIX 3: Hanya mark notification_sent jika berhasil
+    if (notificationSent) {
+      await supabase
+        .from("payments")
+        .update({ notification_sent: true })
+        .eq("id", paymentId)
+    }
 
     return NextResponse.json({
       success: true,
       notificationSent,
+      notificationMethod,
       notificationError,
       tenant: tenant.name,
       type,
       message: notificationSent 
-        ? "Notification sent successfully" 
+        ? `Notification sent successfully via ${notificationMethod}` 
         : `Notification failed: ${notificationError || "Unknown error"}`,
     })
   } catch (error) {
