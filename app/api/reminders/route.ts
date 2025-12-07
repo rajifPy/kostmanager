@@ -17,6 +17,7 @@ export async function GET() {
       .lte("reminder_date", today)
 
     if (error) {
+      console.error("Error fetching reminders:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -26,12 +27,16 @@ export async function GET() {
       const payment = reminder.payment
       const tenant = payment?.tenant
 
-      if (!tenant) continue
+      if (!tenant) {
+        console.log(`Skipping reminder ${reminder.id} - no tenant found`)
+        continue
+      }
 
       const message = generateReminderMessage(reminder, payment, tenant)
 
       // Try to send notification via WhatsApp or Email
       let notificationSent = false
+      let notificationError = null
 
       // Try WhatsApp first (Fonnte)
       if (tenant.phone && process.env.FONNTE_API_KEY) {
@@ -48,34 +53,61 @@ export async function GET() {
             }),
           })
 
+          const result = await response.json()
+
           if (response.ok) {
             notificationSent = true
+          } else {
+            notificationError = result.reason || "WhatsApp failed"
           }
         } catch (e) {
+          notificationError = e instanceof Error ? e.message : "WhatsApp error"
           console.error("WhatsApp notification failed:", e)
         }
       }
 
       // Fallback to email if WhatsApp fails or not configured
-      if (!notificationSent && tenant.email && process.env.SMTP_HOST) {
+      if (!notificationSent && tenant.email && process.env.RESEND_API_KEY) {
         try {
-          // Using simple fetch to send email via SMTP relay or email API
-          // In production, use nodemailer or email service API
-          const emailResult = await sendEmailNotification(tenant.email, "Reminder Pembayaran Kost", message)
-          notificationSent = emailResult
+          const response = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: process.env.EMAIL_FROM || "noreply@kostmanager.com",
+              to: tenant.email,
+              subject: "Reminder Pembayaran Kost",
+              text: message,
+            }),
+          })
+
+          if (response.ok) {
+            notificationSent = true
+            notificationError = null
+          } else {
+            const result = await response.json()
+            notificationError = result.message || "Email failed"
+          }
         } catch (e) {
+          notificationError = e instanceof Error ? e.message : "Email error"
           console.error("Email notification failed:", e)
         }
       }
 
-      // Mark reminder as sent (or failed)
-      await supabase
+      // Mark reminder as sent or failed
+      const updateResult = await supabase
         .from("reminders")
         .update({
           status: notificationSent ? "sent" : "failed",
           sent_at: notificationSent ? new Date().toISOString() : null,
         })
         .eq("id", reminder.id)
+
+      if (updateResult.error) {
+        console.error("Error updating reminder:", updateResult.error)
+      }
 
       results.push({
         id: reminder.id,
@@ -84,23 +116,38 @@ export async function GET() {
         email: tenant.email,
         message,
         status: notificationSent ? "sent" : "failed",
+        error: notificationError,
       })
     }
 
     // Also update overdue payments
-    await supabase
+    const updateOverdueResult = await supabase
       .from("payments")
       .update({ status: "overdue", updated_at: new Date().toISOString() })
       .eq("status", "pending")
       .lt("due_date", today)
 
+    if (updateOverdueResult.error) {
+      console.error("Error updating overdue payments:", updateOverdueResult.error)
+    }
+
     return NextResponse.json({
       success: true,
       processed: results.length,
+      sent: results.filter(r => r.status === "sent").length,
+      failed: results.filter(r => r.status === "failed").length,
       results,
+      overdueUpdated: updateOverdueResult.count || 0,
     })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
+    console.error("Reminders API error:", error)
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : "Unknown error",
+        success: false 
+      }, 
+      { status: 500 }
+    )
   }
 }
 
@@ -147,35 +194,4 @@ Mohon segera lakukan pembayaran dan upload bukti pembayaran melalui website kami
 
 Terima kasih.
 - KostManager`
-}
-
-async function sendEmailNotification(to: string, subject: string, text: string): Promise<boolean> {
-  // If using an email API service like Resend, SendGrid, etc.
-  // You can integrate here
-
-  // Example with Resend API (if configured)
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: process.env.EMAIL_FROM || "noreply@kostmanager.com",
-          to: to,
-          subject: subject,
-          text: text,
-        }),
-      })
-      return response.ok
-    } catch {
-      return false
-    }
-  }
-
-  // For demo purposes, log the email
-  console.log(`[Email] To: ${to}, Subject: ${subject}`)
-  return true
 }
