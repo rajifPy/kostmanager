@@ -42,6 +42,7 @@ interface PaymentListProps {
   tenants: Tenant[]
 }
 
+'use client'
 
 import { useState } from 'react'
 
