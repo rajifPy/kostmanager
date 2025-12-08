@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,24 +41,28 @@ import type { Payment, Tenant } from "@/lib/types"
 interface PaymentListProps {
   payments: Payment[]
   tenants: Tenant[]
+  isAdmin?: boolean // new prop to control admin-only actions at UI level
 }
 
-export function PaymentList({ payments, tenants }: PaymentListProps) {
+export function PaymentList({ payments, tenants, isAdmin = false }: PaymentListProps) {
+  const router = useRouter()
+
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null)
   const [viewProofPayment, setViewProofPayment] = useState<Payment | null>(null)
   const [rejectPaymentData, setRejectPaymentData] = useState<Payment | null>(null)
   const [rejectReason, setRejectReason] = useState("")
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isVerifying, setIsVerifying] = useState(false)
-  const [isRejecting, setIsRejecting] = useState(false)
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
+  const [isVerifyingId, setIsVerifyingId] = useState<string | null>(null)
+  const [isRejectingId, setIsRejectingId] = useState<string | null>(null)
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount?: number) => {
+    const a = typeof amount === "number" ? amount : 0
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
-    }).format(amount)
+    }).format(a)
   }
 
   const getStatusBadge = (status: string) => {
@@ -77,37 +82,58 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
 
   const handleDelete = async () => {
     if (!deletePaymentId) return
-    setIsDeleting(true)
-    await deletePayment(deletePaymentId)
-    setIsDeleting(false)
-    setDeletePaymentId(null)
+    setIsDeletingId(deletePaymentId)
+    try {
+      await deletePayment(deletePaymentId)
+      // refresh data after delete
+      router.refresh()
+    } catch (err) {
+      console.error("Delete failed:", err)
+    } finally {
+      setIsDeletingId(null)
+      setDeletePaymentId(null)
+    }
   }
 
   const handleVerify = async (payment: Payment) => {
-    setIsVerifying(true)
-    await verifyPayment(payment.id)
-    setIsVerifying(false)
-    setViewProofPayment(null)
+    setIsVerifyingId(payment.id)
+    try {
+      await verifyPayment(payment.id)
+      router.refresh()
+      setViewProofPayment(null)
+    } catch (err) {
+      console.error("Verify failed:", err)
+    } finally {
+      setIsVerifyingId(null)
+    }
   }
 
   const handleReject = async () => {
     if (!rejectPaymentData) return
-    setIsRejecting(true)
-    await rejectPayment(rejectPaymentData.id, rejectReason)
-    setIsRejecting(false)
-    setRejectPaymentData(null)
-    setRejectReason("")
-    setViewProofPayment(null)
+    setIsRejectingId(rejectPaymentData.id)
+    try {
+      await rejectPayment(rejectPaymentData.id, rejectReason)
+      router.refresh()
+      setRejectPaymentData(null)
+      setRejectReason("")
+      setViewProofPayment(null)
+    } catch (err) {
+      console.error("Reject failed:", err)
+    } finally {
+      setIsRejectingId(null)
+    }
   }
 
-  // Filter pending payments first
+  // Filter pending payments first, then by due_date (safe check)
   const sortedPayments = [...payments].sort((a, b) => {
     if (a.status === "pending" && b.status !== "pending") return -1
     if (a.status !== "pending" && b.status === "pending") return 1
-    return new Date(b.due_date).getTime() - new Date(a.due_date).getTime()
+    const da = a.due_date ? new Date(a.due_date).getTime() : 0
+    const db = b.due_date ? new Date(b.due_date).getTime() : 0
+    return db - da
   })
 
-  if (payments.length === 0) {
+  if (!payments || payments.length === 0) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
@@ -152,7 +178,7 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                       )}
                     </TableCell>
                     <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                    <TableCell>{new Date(payment.due_date).toLocaleDateString("id-ID")}</TableCell>
+                    <TableCell>{payment.due_date ? new Date(payment.due_date).toLocaleDateString("id-ID") : "-"}</TableCell>
                     <TableCell>
                       {payment.proof_url ? (
                         <Button
@@ -177,7 +203,8 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {payment.status === "pending" && payment.proof_url && (
+                          {/* Only show admin actions if isAdmin true */}
+                          {isAdmin && payment.status === "pending" && payment.proof_url && (
                             <>
                               <DropdownMenuItem onClick={() => setViewProofPayment(payment)}>
                                 <Eye className="mr-2 h-4 w-4" />
@@ -186,20 +213,25 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                               <DropdownMenuSeparator />
                             </>
                           )}
-                          {payment.status === "pending" && !payment.proof_url && (
+                          {isAdmin && payment.status === "pending" && !payment.proof_url && (
                             <DropdownMenuItem onClick={() => handleVerify(payment)}>
                               <CheckCircle className="mr-2 h-4 w-4" />
                               Tandai Lunas
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem onClick={() => setEditPayment(payment)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => setDeletePaymentId(payment.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Hapus
-                          </DropdownMenuItem>
+                          {/* Edit can be admin-only or allowed to other roles; adjust as needed */}
+                          {isAdmin && (
+                            <DropdownMenuItem onClick={() => setEditPayment(payment)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          {isAdmin && (
+                            <DropdownMenuItem className="text-destructive" onClick={() => setDeletePaymentId(payment.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Hapus
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -227,7 +259,7 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                 </div>
                 {getStatusBadge(payment.status)}
               </div>
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Jumlah:</span>
@@ -235,7 +267,7 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Jatuh Tempo:</span>
-                  <span>{new Date(payment.due_date).toLocaleDateString("id-ID")}</span>
+                  <span>{payment.due_date ? new Date(payment.due_date).toLocaleDateString("id-ID") : "-"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Bukti:</span>
@@ -255,7 +287,7 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
               </div>
 
               <div className="flex gap-2 mt-4">
-                {payment.status === "pending" && payment.proof_url && (
+                {isAdmin && payment.status === "pending" && payment.proof_url && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -266,24 +298,29 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                     Verifikasi
                   </Button>
                 )}
-                {payment.status === "pending" && !payment.proof_url && (
+                {isAdmin && payment.status === "pending" && !payment.proof_url && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleVerify(payment)}
                     className="flex-1"
+                    disabled={isVerifyingId === payment.id}
                   >
                     <CheckCircle className="mr-1 h-3 w-3" />
-                    Lunas
+                    {isVerifyingId === payment.id ? "Memproses..." : "Lunas"}
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setEditPayment(payment)} className="flex-1">
-                  <Edit className="mr-1 h-3 w-3" />
-                  Edit
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setDeletePaymentId(payment.id)} className="text-destructive">
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => setEditPayment(payment)} className="flex-1">
+                    <Edit className="mr-1 h-3 w-3" />
+                    Edit
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => setDeletePaymentId(payment.id)} className="text-destructive">
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -291,18 +328,18 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
       </div>
 
       {/* View Proof Dialog */}
-      <Dialog open={!!viewProofPayment} onOpenChange={() => setViewProofPayment(null)}>
+      <Dialog open={!!viewProofPayment} onOpenChange={(open) => !open && setViewProofPayment(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Verifikasi Bukti Pembayaran</DialogTitle>
             <DialogDescription>
-              Pembayaran dari {viewProofPayment?.tenant?.name} - {formatCurrency(viewProofPayment?.amount || 0)}
+              Pembayaran dari {viewProofPayment?.tenant?.name} - {formatCurrency(viewProofPayment?.amount)}
             </DialogDescription>
           </DialogHeader>
           {viewProofPayment?.proof_url && (
             <div className="space-y-4">
               <div className="rounded-lg border overflow-hidden">
-                {viewProofPayment.proof_url.endsWith(".pdf") ? (
+                {viewProofPayment.proof_url.toLowerCase().endsWith(".pdf") ? (
                   <iframe src={viewProofPayment.proof_url} className="w-full h-96" title="Bukti Pembayaran" />
                 ) : (
                   <img
@@ -319,20 +356,20 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
               )}
             </div>
           )}
-          {viewProofPayment?.status === "pending" && (
+          {viewProofPayment?.status === "pending" && isAdmin && (
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
                 variant="destructive"
                 onClick={() => {
                   setRejectPaymentData(viewProofPayment)
                 }}
-                disabled={isVerifying}
+                disabled={isVerifyingId === viewProofPayment.id}
               >
                 <XCircle className="mr-2 h-4 w-4" />
                 Tolak
               </Button>
-              <Button onClick={() => handleVerify(viewProofPayment)} disabled={isVerifying}>
-                {isVerifying ? (
+              <Button onClick={() => handleVerify(viewProofPayment)} disabled={isVerifyingId === viewProofPayment.id}>
+                {isVerifyingId === viewProofPayment.id ? (
                   "Memproses..."
                 ) : (
                   <>
@@ -347,7 +384,7 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
       </Dialog>
 
       {/* Reject Dialog */}
-      <Dialog open={!!rejectPaymentData} onOpenChange={() => setRejectPaymentData(null)}>
+      <Dialog open={!!rejectPaymentData} onOpenChange={(open) => !open && setRejectPaymentData(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Tolak Pembayaran</DialogTitle>
@@ -369,25 +406,28 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
             <Button variant="outline" onClick={() => setRejectPaymentData(null)}>
               Batal
             </Button>
-            <Button variant="destructive" onClick={handleReject} disabled={isRejecting}>
-              {isRejecting ? "Memproses..." : "Tolak Pembayaran"}
+            <Button variant="destructive" onClick={handleReject} disabled={isRejectingId === rejectPaymentData?.id}>
+              {isRejectingId === rejectPaymentData?.id ? "Memproses..." : "Tolak Pembayaran"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editPayment} onOpenChange={() => setEditPayment(null)}>
+      <Dialog open={!!editPayment} onOpenChange={(open) => !open && setEditPayment(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Pembayaran</DialogTitle>
           </DialogHeader>
           {editPayment && (
-            <PaymentForm payment={editPayment} tenants={tenants} onSuccess={() => setEditPayment(null)} />
+            <PaymentForm payment={editPayment} tenants={tenants} onSuccess={() => {
+              setEditPayment(null)
+              router.refresh()
+            }} />
           )}
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletePaymentId} onOpenChange={() => setDeletePaymentId(null)}>
+      <AlertDialog open={!!deletePaymentId} onOpenChange={(open) => !open && setDeletePaymentId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Pembayaran?</AlertDialogTitle>
@@ -400,9 +440,9 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleting}
+              disabled={isDeletingId === deletePaymentId}
             >
-              {isDeleting ? "Menghapus..." : "Hapus"}
+              {isDeletingId === deletePaymentId ? "Menghapus..." : "Hapus"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
