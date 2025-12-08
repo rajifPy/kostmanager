@@ -1,15 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
-// Helper function to format phone number
+// ✅ FIXED: Improved phone number formatting
 function formatPhoneNumber(phone: string | null | undefined): string | null {
   if (!phone) return null
 
   // Remove all non-digit characters
   const cleaned = phone.replace(/\D/g, '')
 
-  // Check length
-  if (cleaned.length < 9 || cleaned.length > 15) { // 9-> some local numbers, be lenient
+  // ✅ More lenient validation (8-15 digits)
+  if (cleaned.length < 8 || cleaned.length > 15) {
     console.error('Invalid phone number length:', cleaned.length, 'for', phone)
     return null
   }
@@ -24,11 +24,6 @@ function formatPhoneNumber(phone: string | null | undefined): string | null {
   if (cleaned.startsWith('8')) {
     return '62' + cleaned
   }
-  // also accept if user included leading +62
-  if (cleaned.startsWith('+' )) {
-    const c = cleaned.replace(/\+/g, '')
-    return c.startsWith('62') ? c : null
-  }
 
   console.error('Invalid phone number format after cleaning:', cleaned)
   return null
@@ -39,22 +34,23 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { type, tenantId, paymentId, reason } = body ?? {}
 
-    console.log('Notification request payload:', { type, tenantId, paymentId })
+    console.log('📨 Notification request received:', { type, tenantId, paymentId })
 
     // Basic validation
     if (!type || !tenantId || !paymentId) {
+      console.error('❌ Missing required fields')
       return NextResponse.json({ error: "Missing required fields (type, tenantId, paymentId)" }, { status: 400 })
     }
 
-    // accept only known types (extendable)
+    // Accept only known types
     const allowedTypes = ["payment_approved", "payment_rejected"]
     if (!allowedTypes.includes(type)) {
+      console.error('❌ Invalid notification type:', type)
       return NextResponse.json({ error: "Invalid notification type" }, { status: 400 })
     }
 
-    // create supabase server client
-    // NOTE: createClient should return a server client that uses SERVICE_ROLE_KEY (server-only)
-    const supabase = createClient() // remove 'await' unless your factory is async
+    // ✅ FIXED: Added await for createClient
+    const supabase = await createClient()
 
     // Get tenant info
     const { data: tenant, error: tenantError } = await supabase
@@ -64,9 +60,15 @@ export async function POST(request: Request) {
       .single()
 
     if (tenantError || !tenant) {
-      console.error('Tenant not found or error:', tenantError)
+      console.error('❌ Tenant not found:', tenantError)
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
     }
+
+    console.log('👤 Tenant found:', {
+      name: tenant.name,
+      phone: tenant.phone,
+      email: tenant.email
+    })
 
     // Get payment info
     const { data: payment, error: paymentError } = await supabase
@@ -76,7 +78,7 @@ export async function POST(request: Request) {
       .single()
 
     if (paymentError || !payment) {
-      console.error('Payment not found or error:', paymentError)
+      console.error('❌ Payment not found:', paymentError)
       return NextResponse.json({ error: "Payment not found" }, { status: 404 })
     }
 
@@ -125,7 +127,7 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
     // Validate and format phone number
     const formattedPhone = formatPhoneNumber(tenant.phone ?? '')
 
-    console.log('Phone validation:', {
+    console.log('📱 Phone validation:', {
       original: tenant.phone,
       formatted: formattedPhone,
       hasFonnteKey: !!process.env.FONNTE_API_KEY
@@ -134,10 +136,8 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
     // Try WhatsApp first (Fonnte)
     if (formattedPhone && process.env.FONNTE_API_KEY) {
       try {
-        console.log('Attempting WhatsApp send to:', formattedPhone)
+        console.log('📤 Attempting WhatsApp send to:', formattedPhone)
 
-        // NOTE: adjust Authorization header to match Fonnte docs.
-        // Some services expect "Authorization: Bearer <token>", others accept raw token.
         const fonnteResponse = await fetch("https://api.fonnte.com/send", {
           method: "POST",
           headers: {
@@ -153,7 +153,7 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
 
         const result = await fonnteResponse.json().catch(() => ({}))
 
-        console.log('Fonnte API response:', {
+        console.log('📬 Fonnte API response:', {
           status: fonnteResponse.status,
           ok: fonnteResponse.ok,
           body: result
@@ -173,14 +173,14 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
       }
     } else {
       const reasonMsg = !formattedPhone ? 'Invalid or missing phone number' : 'Fonnte API key not configured'
-      console.log('WhatsApp skipped:', reasonMsg)
+      console.log('⚠️ WhatsApp skipped:', reasonMsg)
       notificationError = notificationError ?? reasonMsg
     }
 
     // Fallback to email if WhatsApp fails
     if (!notificationSent && tenant.email && process.env.RESEND_API_KEY) {
       try {
-        console.log('Attempting email send to:', tenant.email)
+        console.log('📤 Attempting email send to:', tenant.email)
 
         const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -198,7 +198,7 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
 
         const result = await emailResponse.json().catch(() => ({}))
 
-        console.log('Resend API response:', {
+        console.log('📬 Resend API response:', {
           status: emailResponse.status,
           ok: emailResponse.ok,
           body: result
@@ -218,9 +218,8 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
         console.error("❌ Email exception:", e)
       }
     } else if (!notificationSent) {
-      // if no email or no API key, we log why fallback didn't run
       const skipped = !tenant.email ? 'No email address' : 'Resend API key not configured'
-      console.log('Email fallback skipped:', skipped)
+      console.log('⚠️ Email fallback skipped:', skipped)
     }
 
     // Mark notification as sent in DB only if it actually succeeded
@@ -231,7 +230,7 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
         .eq("id", paymentId)
 
       if (updateErr) {
-        console.error('Failed to mark notification_sent in DB:', updateErr)
+        console.error('❌ Failed to mark notification_sent in DB:', updateErr)
       } else {
         console.log('✅ Payment marked as notification_sent in DB')
       }
