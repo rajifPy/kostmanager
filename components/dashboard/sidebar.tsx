@@ -7,9 +7,11 @@ import { Building2, LayoutDashboard, DoorOpen, Users, CreditCard, Bell, LogOut }
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { TrendingUp } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Statistik", href: "/dashboard/statistics", icon: TrendingUp },
   { name: "Kamar", href: "/dashboard/rooms", icon: DoorOpen },
   { name: "Penyewa", href: "/dashboard/tenants", icon: Users },
   { name: "Pembayaran", href: "/dashboard/payments", icon: CreditCard },
