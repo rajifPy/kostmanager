@@ -150,6 +150,20 @@ export async function markAsPaid(id: string) {
   revalidatePath("/penyewa")
 }
 
+// ✅ FIXED: Improved URL construction
+function getBaseUrl(): string {
+  // Priority: NEXT_PUBLIC_APP_URL > VERCEL_URL > localhost
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  
+  return 'http://localhost:3000'
+}
+
 export async function verifyPayment(id: string) {
   const supabase = await createClient()
 
@@ -173,25 +187,46 @@ export async function verifyPayment(id: string) {
   // Mark all related reminders as sent
   await supabase.from("reminders").update({ status: "sent", sent_at: new Date().toISOString() }).eq("payment_id", id)
 
-  // Trigger notification using absolute URL
+  // Trigger notification
   if (payment?.tenant) {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : 'http://localhost:3000'
+      const baseUrl = getBaseUrl()
       
-      await fetch(`${baseUrl}/api/notifications`, {
+      console.log('🔔 Sending notification to:', {
+        url: `${baseUrl}/api/notifications`,
+        tenant: payment.tenant.name,
+        phone: payment.tenant.phone,
+        email: payment.tenant.email
+      })
+      
+      const response = await fetch(`${baseUrl}/api/notifications`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           type: "payment_approved",
           tenantId: payment.tenant.id,
           paymentId: id,
         }),
       })
+
+      const result = await response.json()
+      
+      console.log('📬 Notification API response:', {
+        status: response.status,
+        ok: response.ok,
+        result
+      })
+      
+      if (!response.ok) {
+        console.error('❌ Notification failed:', result)
+      }
     } catch (err) {
-      console.error("Notification error:", err)
+      console.error("❌ Notification error:", err)
     }
+  } else {
+    console.warn('⚠️ No tenant found for payment:', id)
   }
 
   revalidatePath("/dashboard/payments")
@@ -220,16 +255,23 @@ export async function rejectPayment(id: string, reason?: string) {
     throw new Error(error.message)
   }
 
-  // Trigger notification using absolute URL
+  // Trigger notification
   if (payment?.tenant) {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : 'http://localhost:3000'
+      const baseUrl = getBaseUrl()
       
-      await fetch(`${baseUrl}/api/notifications`, {
+      console.log('🔔 Sending rejection notification to:', {
+        url: `${baseUrl}/api/notifications`,
+        tenant: payment.tenant.name,
+        phone: payment.tenant.phone,
+        email: payment.tenant.email
+      })
+      
+      const response = await fetch(`${baseUrl}/api/notifications`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           type: "payment_rejected",
           tenantId: payment.tenant.id,
@@ -237,9 +279,23 @@ export async function rejectPayment(id: string, reason?: string) {
           reason: reason || "Bukti pembayaran tidak valid",
         }),
       })
+
+      const result = await response.json()
+      
+      console.log('📬 Notification API response:', {
+        status: response.status,
+        ok: response.ok,
+        result
+      })
+      
+      if (!response.ok) {
+        console.error('❌ Notification failed:', result)
+      }
     } catch (err) {
-      console.error("Notification error:", err)
+      console.error("❌ Notification error:", err)
     }
+  } else {
+    console.warn('⚠️ No tenant found for payment:', id)
   }
 
   revalidatePath("/dashboard/payments")
