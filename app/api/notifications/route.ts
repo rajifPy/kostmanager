@@ -1,10 +1,42 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
+// Helper function to format phone number
+function formatPhoneNumber(phone: string): string | null {
+  if (!phone) return null
+  
+  // Remove all non-digit characters
+  const cleaned = phone.replace(/\D/g, '')
+  
+  // Check if number is valid (10-15 digits)
+  if (cleaned.length < 10 || cleaned.length > 15) {
+    console.error('Invalid phone number length:', cleaned.length)
+    return null
+  }
+  
+  // Format to Indonesian format
+  if (cleaned.startsWith('0')) {
+    // 08xxx -> 628xxx
+    return '62' + cleaned.substring(1)
+  } else if (cleaned.startsWith('62')) {
+    // Already in correct format
+    return cleaned
+  } else if (cleaned.startsWith('8')) {
+    // 8xxx -> 628xxx
+    return '62' + cleaned
+  } else {
+    // Invalid format
+    console.error('Invalid phone number format:', cleaned)
+    return null
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { type, tenantId, paymentId, reason } = body
+
+    console.log('Notification request:', { type, tenantId, paymentId })
 
     const supabase = await createClient()
 
@@ -16,8 +48,11 @@ export async function POST(request: Request) {
       .single()
 
     if (tenantError || !tenant) {
+      console.error('Tenant not found:', tenantError)
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
     }
+
+    console.log('Tenant found:', { name: tenant.name, phone: tenant.phone, email: tenant.email })
 
     // Get payment info
     const { data: payment, error: paymentError } = await supabase
@@ -27,6 +62,7 @@ export async function POST(request: Request) {
       .single()
 
     if (paymentError || !payment) {
+      console.error('Payment not found:', paymentError)
       return NextResponse.json({ error: "Payment not found" }, { status: 404 })
     }
 
@@ -72,24 +108,21 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
     let notificationError = null
     let notificationMethod = null
 
-    // Validasi dan format nomor telepon
-    const phoneNumber = tenant.phone?.replace(/\D/g, '') // Hapus non-digit
-    const isValidPhone = phoneNumber && phoneNumber.length >= 10 && phoneNumber.length <= 15
+    // Validate and format phone number
+    const formattedPhone = formatPhoneNumber(tenant.phone || '')
+    
+    console.log('Phone validation:', {
+      original: tenant.phone,
+      formatted: formattedPhone,
+      hasFonnteKey: !!process.env.FONNTE_API_KEY
+    })
 
     // Try WhatsApp first (Fonnte)
-    if (isValidPhone && process.env.FONNTE_API_KEY) {
+    if (formattedPhone && process.env.FONNTE_API_KEY) {
       try {
-        // Format nomor: pastikan dimulai dengan 62
-        let formattedPhone = phoneNumber
-        if (phoneNumber.startsWith('0')) {
-          formattedPhone = '62' + phoneNumber.substring(1) // 08xxx -> 628xxx
-        } else if (!phoneNumber.startsWith('62')) {
-          formattedPhone = '62' + phoneNumber // xxx -> 62xxx
-        }
+        console.log('Attempting WhatsApp send to:', formattedPhone)
 
-        console.log('Sending WhatsApp to:', formattedPhone)
-
-        const response = await fetch("https://api.fonnte.com/send", {
+        const fonnteResponse = await fetch("https://api.fonnte.com/send", {
           method: "POST",
           headers: {
             Authorization: process.env.FONNTE_API_KEY,
@@ -98,67 +131,84 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
           body: JSON.stringify({
             target: formattedPhone,
             message: message,
+            countryCode: "62", // Indonesian country code
           }),
         })
 
-        const result = await response.json()
+        const result = await fonnteResponse.json()
         
-        console.log('Fonnte response:', result)
+        console.log('Fonnte API response:', {
+          status: fonnteResponse.status,
+          ok: fonnteResponse.ok,
+          result: result
+        })
         
         // Fonnte returns status: true on success
-        if (response.ok && result.status === true) {
+        if (fonnteResponse.ok && result.status === true) {
           notificationSent = true
           notificationMethod = 'whatsapp'
+          console.log('✅ WhatsApp sent successfully')
         } else {
-          notificationError = result.reason || result.message || "WhatsApp notification failed"
-          console.error('Fonnte error:', notificationError)
+          notificationError = result.reason || result.message || JSON.stringify(result)
+          console.error('❌ Fonnte error:', notificationError)
         }
       } catch (e) {
         notificationError = e instanceof Error ? e.message : "WhatsApp notification failed"
-        console.error("WhatsApp notification error:", e)
+        console.error("❌ WhatsApp exception:", e)
       }
     } else {
-      console.log('WhatsApp skipped:', { 
-        hasPhone: !!tenant.phone, 
-        isValidPhone, 
-        hasApiKey: !!process.env.FONNTE_API_KEY 
-      })
+      const reason = !formattedPhone 
+        ? 'Invalid or missing phone number' 
+        : 'Fonnte API key not configured'
+      console.log('WhatsApp skipped:', reason)
+      notificationError = reason
     }
 
     // Fallback to email if WhatsApp fails
     if (!notificationSent && tenant.email && process.env.RESEND_API_KEY) {
       try {
-        console.log('Sending email to:', tenant.email)
+        console.log('Attempting email send to:', tenant.email)
 
-        const response = await fetch("https://api.resend.com/emails", {
+        const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: process.env.EMAIL_FROM || "noreply@kostmanager.com",
+            from: process.env.EMAIL_FROM || "onboarding@resend.dev",
             to: tenant.email,
             subject: subject,
             text: message,
           }),
         })
         
-        const result = await response.json()
+        const result = await emailResponse.json()
         
-        if (response.ok && result.id) {
+        console.log('Resend API response:', {
+          status: emailResponse.status,
+          ok: emailResponse.ok,
+          result: result
+        })
+        
+        if (emailResponse.ok && result.id) {
           notificationSent = true
           notificationError = null
           notificationMethod = 'email'
-          console.log('Email sent successfully:', result.id)
+          console.log('✅ Email sent successfully:', result.id)
         } else {
           notificationError = result.message || "Email notification failed"
-          console.error('Email error:', result)
+          console.error('❌ Email error:', result)
         }
       } catch (e) {
         notificationError = e instanceof Error ? e.message : "Email notification failed"
-        console.error("Email notification error:", e)
+        console.error("❌ Email exception:", e)
       }
+    } else if (!notificationSent) {
+      const reason = !tenant.email 
+        ? 'No email address' 
+        : 'Resend API key not configured'
+      console.log('Email skipped:', reason)
     }
 
     // Mark notification as sent only if successful
@@ -167,6 +217,8 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
         .from("payments")
         .update({ notification_sent: true })
         .eq("id", paymentId)
+      
+      console.log('✅ Payment marked as notification sent')
     }
 
     return NextResponse.json({
@@ -176,12 +228,14 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
       notificationError,
       tenant: tenant.name,
       type,
+      phone: formattedPhone,
+      email: tenant.email,
       message: notificationSent 
         ? `Notification sent successfully via ${notificationMethod}` 
         : `Notification failed: ${notificationError || "Unknown error"}`,
     })
   } catch (error) {
-    console.error("Notification API error:", error)
+    console.error("❌ Notification API error:", error)
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : "Unknown error",
