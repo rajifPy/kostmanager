@@ -2,67 +2,81 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 // Helper function to format phone number
-function formatPhoneNumber(phone: string): string | null {
+function formatPhoneNumber(phone: string | null | undefined): string | null {
   if (!phone) return null
-  
+
   // Remove all non-digit characters
   const cleaned = phone.replace(/\D/g, '')
-  
-  // Check if number is valid (10-15 digits)
-  if (cleaned.length < 10 || cleaned.length > 15) {
-    console.error('Invalid phone number length:', cleaned.length)
+
+  // Check length
+  if (cleaned.length < 9 || cleaned.length > 15) { // 9-> some local numbers, be lenient
+    console.error('Invalid phone number length:', cleaned.length, 'for', phone)
     return null
   }
-  
-  // Format to Indonesian format
+
+  // Normalize to Indonesian international format (no "+")
   if (cleaned.startsWith('0')) {
-    // 08xxx -> 628xxx
     return '62' + cleaned.substring(1)
-  } else if (cleaned.startsWith('62')) {
-    // Already in correct format
-    return cleaned
-  } else if (cleaned.startsWith('8')) {
-    // 8xxx -> 628xxx
-    return '62' + cleaned
-  } else {
-    // Invalid format
-    console.error('Invalid phone number format:', cleaned)
-    return null
   }
+  if (cleaned.startsWith('62')) {
+    return cleaned
+  }
+  if (cleaned.startsWith('8')) {
+    return '62' + cleaned
+  }
+  // also accept if user included leading +62
+  if (cleaned.startsWith('+' )) {
+    const c = cleaned.replace(/\+/g, '')
+    return c.startsWith('62') ? c : null
+  }
+
+  console.error('Invalid phone number format after cleaning:', cleaned)
+  return null
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { type, tenantId, paymentId, reason } = body
+    const { type, tenantId, paymentId, reason } = body ?? {}
 
-    console.log('Notification request:', { type, tenantId, paymentId })
+    console.log('Notification request payload:', { type, tenantId, paymentId })
 
-    const supabase = await createClient()
+    // Basic validation
+    if (!type || !tenantId || !paymentId) {
+      return NextResponse.json({ error: "Missing required fields (type, tenantId, paymentId)" }, { status: 400 })
+    }
+
+    // accept only known types (extendable)
+    const allowedTypes = ["payment_approved", "payment_rejected"]
+    if (!allowedTypes.includes(type)) {
+      return NextResponse.json({ error: "Invalid notification type" }, { status: 400 })
+    }
+
+    // create supabase server client
+    // NOTE: createClient should return a server client that uses SERVICE_ROLE_KEY (server-only)
+    const supabase = createClient() // remove 'await' unless your factory is async
 
     // Get tenant info
     const { data: tenant, error: tenantError } = await supabase
       .from("tenants")
-      .select("*")
+      .select("id, name, phone, email")
       .eq("id", tenantId)
       .single()
 
     if (tenantError || !tenant) {
-      console.error('Tenant not found:', tenantError)
+      console.error('Tenant not found or error:', tenantError)
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
     }
-
-    console.log('Tenant found:', { name: tenant.name, phone: tenant.phone, email: tenant.email })
 
     // Get payment info
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
-      .select("*")
+      .select("id, amount, due_date, notification_sent")
       .eq("id", paymentId)
       .single()
 
     if (paymentError || !payment) {
-      console.error('Payment not found:', paymentError)
+      console.error('Payment not found or error:', paymentError)
       return NextResponse.json({ error: "Payment not found" }, { status: 404 })
     }
 
@@ -70,10 +84,10 @@ export async function POST(request: Request) {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
-    }).format(payment.amount)
+    }).format(payment.amount ?? 0)
 
-    let message = ""
     let subject = ""
+    let message = ""
 
     if (type === "payment_approved") {
       subject = "Pembayaran Anda Telah Diterima"
@@ -105,12 +119,12 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
     }
 
     let notificationSent = false
-    let notificationError = null
-    let notificationMethod = null
+    let notificationError: string | null = null
+    let notificationMethod: "whatsapp" | "email" | null = null
 
     // Validate and format phone number
-    const formattedPhone = formatPhoneNumber(tenant.phone || '')
-    
+    const formattedPhone = formatPhoneNumber(tenant.phone ?? '')
+
     console.log('Phone validation:', {
       original: tenant.phone,
       formatted: formattedPhone,
@@ -122,46 +136,45 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
       try {
         console.log('Attempting WhatsApp send to:', formattedPhone)
 
+        // NOTE: adjust Authorization header to match Fonnte docs.
+        // Some services expect "Authorization: Bearer <token>", others accept raw token.
         const fonnteResponse = await fetch("https://api.fonnte.com/send", {
           method: "POST",
           headers: {
-            Authorization: process.env.FONNTE_API_KEY,
+            Authorization: process.env.FONNTE_API_KEY as string,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             target: formattedPhone,
-            message: message,
-            countryCode: "62", // Indonesian country code
+            message,
+            countryCode: "62",
           }),
         })
 
-        const result = await fonnteResponse.json()
-        
+        const result = await fonnteResponse.json().catch(() => ({}))
+
         console.log('Fonnte API response:', {
           status: fonnteResponse.status,
           ok: fonnteResponse.ok,
-          result: result
+          body: result
         })
-        
-        // Fonnte returns status: true on success
-        if (fonnteResponse.ok && result.status === true) {
+
+        if (fonnteResponse.ok && (result.status === true || result.success === true)) {
           notificationSent = true
           notificationMethod = 'whatsapp'
           console.log('✅ WhatsApp sent successfully')
         } else {
           notificationError = result.reason || result.message || JSON.stringify(result)
-          console.error('❌ Fonnte error:', notificationError)
+          console.error('❌ Fonnte returned error:', notificationError)
         }
       } catch (e) {
-        notificationError = e instanceof Error ? e.message : "WhatsApp notification failed"
+        notificationError = e instanceof Error ? e.message : "WhatsApp notification exception"
         console.error("❌ WhatsApp exception:", e)
       }
     } else {
-      const reason = !formattedPhone 
-        ? 'Invalid or missing phone number' 
-        : 'Fonnte API key not configured'
-      console.log('WhatsApp skipped:', reason)
-      notificationError = reason
+      const reasonMsg = !formattedPhone ? 'Invalid or missing phone number' : 'Fonnte API key not configured'
+      console.log('WhatsApp skipped:', reasonMsg)
+      notificationError = notificationError ?? reasonMsg
     }
 
     // Fallback to email if WhatsApp fails
@@ -178,69 +191,71 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
           body: JSON.stringify({
             from: process.env.EMAIL_FROM || "onboarding@resend.dev",
             to: tenant.email,
-            subject: subject,
+            subject,
             text: message,
           }),
         })
-        
-        const result = await emailResponse.json()
-        
+
+        const result = await emailResponse.json().catch(() => ({}))
+
         console.log('Resend API response:', {
           status: emailResponse.status,
           ok: emailResponse.ok,
-          result: result
+          body: result
         })
-        
+
         if (emailResponse.ok && result.id) {
           notificationSent = true
-          notificationError = null
           notificationMethod = 'email'
+          notificationError = null
           console.log('✅ Email sent successfully:', result.id)
         } else {
-          notificationError = result.message || "Email notification failed"
-          console.error('❌ Email error:', result)
+          notificationError = result.message || JSON.stringify(result)
+          console.error('❌ Resend/email error:', notificationError)
         }
       } catch (e) {
-        notificationError = e instanceof Error ? e.message : "Email notification failed"
+        notificationError = e instanceof Error ? e.message : "Email notification exception"
         console.error("❌ Email exception:", e)
       }
     } else if (!notificationSent) {
-      const reason = !tenant.email 
-        ? 'No email address' 
-        : 'Resend API key not configured'
-      console.log('Email skipped:', reason)
+      // if no email or no API key, we log why fallback didn't run
+      const skipped = !tenant.email ? 'No email address' : 'Resend API key not configured'
+      console.log('Email fallback skipped:', skipped)
     }
 
-    // Mark notification as sent only if successful
+    // Mark notification as sent in DB only if it actually succeeded
     if (notificationSent) {
-      await supabase
+      const { error: updateErr } = await supabase
         .from("payments")
-        .update({ notification_sent: true })
+        .update({ notification_sent: true, updated_at: new Date().toISOString() })
         .eq("id", paymentId)
-      
-      console.log('✅ Payment marked as notification sent')
+
+      if (updateErr) {
+        console.error('Failed to mark notification_sent in DB:', updateErr)
+      } else {
+        console.log('✅ Payment marked as notification_sent in DB')
+      }
     }
 
     return NextResponse.json({
       success: notificationSent,
-      notificationSent,
       notificationMethod,
       notificationError,
       tenant: tenant.name,
       type,
       phone: formattedPhone,
       email: tenant.email,
-      message: notificationSent 
-        ? `Notification sent successfully via ${notificationMethod}` 
+      message: notificationSent
+        ? `Notification sent successfully via ${notificationMethod}`
         : `Notification failed: ${notificationError || "Unknown error"}`,
     })
   } catch (error) {
     console.error("❌ Notification API error:", error)
     return NextResponse.json(
-      { 
+      {
         error: error instanceof Error ? error.message : "Unknown error",
-        success: false 
-      }, 
+        success: false,
+      },
       { status: 500 }
     )
   }
