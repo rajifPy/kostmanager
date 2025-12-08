@@ -1,8 +1,3 @@
-// ==========================================
-// FILE: app/api/notifications/route.ts
-// MASALAH: Logika notification_sent & error handling
-// ==========================================
-
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
@@ -73,18 +68,18 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
 - KostManager`
     }
 
-    // Try to send notification via WhatsApp
     let notificationSent = false
     let notificationError = null
     let notificationMethod = null
 
-    // FIX 1: Validasi format nomor telepon
-    const phoneNumber = tenant.phone?.replace(/\D/g, ''); // Hapus non-digit
-    const isValidPhone = phoneNumber && phoneNumber.length >= 10 && phoneNumber.length <= 15;
+    // Validasi dan format nomor telepon
+    const phoneNumber = tenant.phone?.replace(/\D/g, '') // Hapus non-digit
+    const isValidPhone = phoneNumber && phoneNumber.length >= 10 && phoneNumber.length <= 15
 
-    if (isValidPhone) {
+    // Try WhatsApp first (Fonnte)
+    if (isValidPhone && process.env.FONNTE_API_KEY) {
       try {
-        // FIX 2: Pastikan nomor dimulai dengan kode negara
+        // Format nomor: pastikan dimulai dengan 62
         let formattedPhone = phoneNumber
         if (phoneNumber.startsWith('0')) {
           formattedPhone = '62' + phoneNumber.substring(1) // 08xxx -> 628xxx
@@ -92,7 +87,7 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
           formattedPhone = '62' + phoneNumber // xxx -> 62xxx
         }
 
-        console.log('Sending WhatsApp to:', formattedPhone) // Debug log
+        console.log('Sending WhatsApp to:', formattedPhone)
 
         const response = await fetch("https://api.fonnte.com/send", {
           method: "POST",
@@ -108,13 +103,14 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
 
         const result = await response.json()
         
-        console.log('Fonnte response:', result) // Debug log
+        console.log('Fonnte response:', result)
         
-        if (response.ok && result.status) {
+        // Fonnte returns status: true on success
+        if (response.ok && result.status === true) {
           notificationSent = true
           notificationMethod = 'whatsapp'
         } else {
-          notificationError = result.reason || "WhatsApp notification failed"
+          notificationError = result.reason || result.message || "WhatsApp notification failed"
           console.error('Fonnte error:', notificationError)
         }
       } catch (e) {
@@ -129,10 +125,10 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
       })
     }
 
-    // Fallback to email if WhatsApp fails or not configured
+    // Fallback to email if WhatsApp fails
     if (!notificationSent && tenant.email && process.env.RESEND_API_KEY) {
       try {
-        console.log('Sending email to:', tenant.email) // Debug log
+        console.log('Sending email to:', tenant.email)
 
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -148,13 +144,14 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
           }),
         })
         
-        if (response.ok) {
+        const result = await response.json()
+        
+        if (response.ok && result.id) {
           notificationSent = true
           notificationError = null
           notificationMethod = 'email'
-          console.log('Email sent successfully')
+          console.log('Email sent successfully:', result.id)
         } else {
-          const result = await response.json()
           notificationError = result.message || "Email notification failed"
           console.error('Email error:', result)
         }
@@ -164,7 +161,7 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
       }
     }
 
-    // FIX 3: Hanya mark notification_sent jika berhasil
+    // Mark notification as sent only if successful
     if (notificationSent) {
       await supabase
         .from("payments")
@@ -173,7 +170,7 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
     }
 
     return NextResponse.json({
-      success: true,
+      success: notificationSent,
       notificationSent,
       notificationMethod,
       notificationError,
