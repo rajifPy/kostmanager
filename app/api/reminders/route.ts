@@ -50,13 +50,27 @@ export async function GET(request: Request) {
 
       const message = generateReminderMessage(reminder, payment, tenant)
 
-      // Try to send notification via WhatsApp or Email
       let notificationSent = false
       let notificationError = null
+      let notificationMethod = null
+
+      // Validasi dan format nomor telepon
+      const phoneNumber = tenant.phone?.replace(/\D/g, '')
+      const isValidPhone = phoneNumber && phoneNumber.length >= 10 && phoneNumber.length <= 15
 
       // Try WhatsApp first (Fonnte)
-      if (tenant.phone && process.env.FONNTE_API_KEY) {
+      if (isValidPhone && process.env.FONNTE_API_KEY) {
         try {
+          // Format nomor: pastikan dimulai dengan 62
+          let formattedPhone = phoneNumber
+          if (phoneNumber.startsWith('0')) {
+            formattedPhone = '62' + phoneNumber.substring(1)
+          } else if (!phoneNumber.startsWith('62')) {
+            formattedPhone = '62' + phoneNumber
+          }
+
+          console.log(`Sending WhatsApp reminder to: ${formattedPhone}`)
+
           const response = await fetch("https://api.fonnte.com/send", {
             method: "POST",
             headers: {
@@ -64,19 +78,21 @@ export async function GET(request: Request) {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              target: tenant.phone,
+              target: formattedPhone,
               message: message,
             }),
           })
 
           const result = await response.json()
+          console.log('Fonnte response:', result)
 
-          if (response.ok && result.status) {
+          if (response.ok && result.status === true) {
             notificationSent = true
-            console.log(`WhatsApp sent to ${tenant.phone}`)
+            notificationMethod = 'whatsapp'
+            console.log(`WhatsApp sent to ${formattedPhone}`)
           } else {
-            notificationError = result.reason || "WhatsApp failed"
-            console.error(`WhatsApp error for ${tenant.phone}:`, result)
+            notificationError = result.reason || result.message || "WhatsApp failed"
+            console.error(`WhatsApp error for ${formattedPhone}:`, result)
           }
         } catch (e) {
           notificationError = e instanceof Error ? e.message : "WhatsApp error"
@@ -101,12 +117,14 @@ export async function GET(request: Request) {
             }),
           })
 
-          if (response.ok) {
+          const result = await response.json()
+
+          if (response.ok && result.id) {
             notificationSent = true
             notificationError = null
+            notificationMethod = 'email'
             console.log(`Email sent to ${tenant.email}`)
           } else {
-            const result = await response.json()
             notificationError = result.message || "Email failed"
             console.error(`Email error for ${tenant.email}:`, result)
           }
@@ -136,6 +154,7 @@ export async function GET(request: Request) {
         email: tenant.email,
         message,
         status: notificationSent ? "sent" : "failed",
+        method: notificationMethod,
         error: notificationError,
       })
     }
