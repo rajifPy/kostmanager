@@ -79,10 +79,10 @@ Silakan upload ulang bukti pembayaran yang valid melalui website kami.
     let notificationMethod = null
 
     // FIX 1: Validasi format nomor telepon
-    const phoneNumber = tenant.phone?.replace(/\D/g, '') // Hapus non-digit
-    const isValidPhone = phoneNumber && phoneNumber.length >= 10 && phoneNumber.length <= 15
+    const phoneNumber = tenant.phone?.replace(/\D/g, ''); // Hapus non-digit
+    const isValidPhone = phoneNumber && phoneNumber.length >= 10 && phoneNumber.length <= 15;
 
-    if (isValidPhone && process.env.FONNTE_API_KEY) {
+    if (isValidPhone) {
       try {
         // FIX 2: Pastikan nomor dimulai dengan kode negara
         let formattedPhone = phoneNumber
