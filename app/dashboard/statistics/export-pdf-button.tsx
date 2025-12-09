@@ -64,11 +64,13 @@ export function ExportPDFButton({
     try {
       setIsGenerating(true)
       
-      // Dynamically import jsPDF to avoid SSR issues
-      const { default: jsPDF } = await import('jspdf')
-      await import('jspdf-autotable')
+      // Dynamically import jsPDF dan autoTable
+      const [{ default: jsPDF }, autoTable] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable')
+      ])
       
-      const doc = new jsPDF() as any
+      const doc = new jsPDF()
       const pageWidth = doc.internal.pageSize.width
       const pageHeight = doc.internal.pageSize.height
       let yPosition = 20
@@ -105,7 +107,7 @@ export function ExportPDFButton({
         ["Total Kamar", totalRooms.toString()],
       ]
 
-      doc.autoTable({
+      autoTable.default(doc, {
         startY: yPosition,
         head: [["Metrik", "Nilai"]],
         body: keyMetrics,
@@ -118,7 +120,7 @@ export function ExportPDFButton({
         }
       })
 
-      yPosition = doc.lastAutoTable.finalY + 15
+      yPosition = (doc as any).lastAutoTable.finalY + 15
 
       // Check if we need a new page
       if (yPosition > pageHeight - 60) {
@@ -137,7 +139,7 @@ export function ExportPDFButton({
         data.payments.toString()
       ])
 
-      doc.autoTable({
+      autoTable.default(doc, {
         startY: yPosition,
         head: [["Bulan", "Pendapatan", "Jumlah Pembayaran"]],
         body: monthlyDataTable,
@@ -151,7 +153,7 @@ export function ExportPDFButton({
         }
       })
 
-      yPosition = doc.lastAutoTable.finalY + 15
+      yPosition = (doc as any).lastAutoTable.finalY + 15
 
       // Check if we need a new page
       if (yPosition > pageHeight - 60) {
@@ -171,7 +173,7 @@ export function ExportPDFButton({
         ["Ditolak", statusBreakdown.rejected.toString(), `${((statusBreakdown.rejected / totalPayments) * 100).toFixed(0)}%`],
       ]
 
-      doc.autoTable({
+      autoTable.default(doc, {
         startY: yPosition,
         head: [["Status", "Jumlah", "Persentase"]],
         body: statusData,
@@ -185,7 +187,7 @@ export function ExportPDFButton({
         }
       })
 
-      yPosition = doc.lastAutoTable.finalY + 15
+      yPosition = (doc as any).lastAutoTable.finalY + 15
 
       // Check if we need a new page
       if (yPosition > pageHeight - 80) {
@@ -208,7 +210,7 @@ export function ExportPDFButton({
           ])
         : [["", "Belum ada data pembayaran", "", "", ""]]
 
-      doc.autoTable({
+      autoTable.default(doc, {
         startY: yPosition,
         head: [["Rank", "Nama", "Kamar", "Pembayaran", "Total"]],
         body: topTenantsData,
