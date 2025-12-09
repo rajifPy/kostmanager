@@ -32,7 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Edit, Trash2, CreditCard, MoreHorizontal, CheckCircle, XCircle, Eye, FileImage } from "lucide-react"
+import { Edit, Trash2, CreditCard, MoreHorizontal, CheckCircle, XCircle, Eye, FileImage, MessageCircle } from "lucide-react"
 import { PaymentForm } from "./payment-form"
 import { deletePayment, verifyPayment, rejectPayment } from "@/app/actions/payments"
 import type { Payment, Tenant } from "@/lib/types"
@@ -40,6 +40,76 @@ import type { Payment, Tenant } from "@/lib/types"
 interface PaymentListProps {
   payments: Payment[]
   tenants: Tenant[]
+}
+
+// Helper function to format phone number for WhatsApp
+function formatWhatsAppNumber(phone: string | null | undefined): string | null {
+  if (!phone) return null
+  
+  const cleaned = phone.replace(/\D/g, '')
+  
+  // Convert to international format
+  if (cleaned.startsWith('0')) {
+    return '62' + cleaned.substring(1)
+  } else if (cleaned.startsWith('62')) {
+    return cleaned
+  } else if (cleaned.startsWith('8')) {
+    return '62' + cleaned
+  }
+  
+  return null
+}
+
+// Generate WhatsApp message templates
+function getWhatsAppMessage(type: 'approved' | 'rejected' | 'reminder', tenant: Tenant, payment: Payment, reason?: string): string {
+  const amount = new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(payment.amount)
+
+  if (type === 'approved') {
+    return `Halo ${tenant.name},
+
+Pembayaran Anda telah diverifikasi dan diterima ✅
+
+Detail Pembayaran:
+- Jumlah: ${amount}
+- Status: LUNAS
+
+Terima kasih telah melakukan pembayaran tepat waktu.
+
+- KostManager`
+  }
+
+  if (type === 'rejected') {
+    return `Halo ${tenant.name},
+
+Mohon maaf, bukti pembayaran Anda tidak dapat diverifikasi ❌
+
+Detail:
+- Jumlah: ${amount}
+- Status: DITOLAK
+- Alasan: ${reason || "Bukti pembayaran tidak valid"}
+
+Silakan upload ulang bukti pembayaran yang valid melalui website kami.
+
+- KostManager`
+  }
+
+  // reminder
+  return `Halo ${tenant.name},
+
+Pengingat pembayaran sewa kost 🏠
+
+Detail Pembayaran:
+- Jumlah: ${amount}
+- Jatuh Tempo: ${new Date(payment.due_date).toLocaleDateString("id-ID")}
+- Status: ${payment.status === 'overdue' ? 'TUNGGAKAN' : 'BELUM DIBAYAR'}
+
+Mohon segera lakukan pembayaran agar tidak terkena denda.
+
+- KostManager`
 }
 
 export function PaymentList({ payments, tenants }: PaymentListProps) {
@@ -100,6 +170,23 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
     setViewProofPayment(null)
   }
 
+  // Handle WhatsApp redirect
+  const handleWhatsApp = (tenant: Tenant, payment: Payment, messageType: 'approved' | 'rejected' | 'reminder', reason?: string) => {
+    const phone = formatWhatsAppNumber(tenant.phone)
+    
+    if (!phone) {
+      alert('Nomor WhatsApp penyewa tidak valid atau tidak tersedia')
+      return
+    }
+
+    const message = getWhatsAppMessage(messageType, tenant, payment, reason)
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`
+    
+    // Open in new tab
+    window.open(whatsappUrl, '_blank')
+  }
+
   // Filter pending payments first
   const sortedPayments = [...payments].sort((a, b) => {
     if (a.status === "pending" && b.status !== "pending") return -1
@@ -143,7 +230,26 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                     key={payment.id}
                     className={payment.status === "pending" ? "bg-yellow-50/50 dark:bg-yellow-950/10" : ""}
                   >
-                    <TableCell className="font-medium">{payment.tenant?.name || "Unknown"}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{payment.tenant?.name || "Unknown"}</span>
+                        {payment.tenant?.phone && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => handleWhatsApp(
+                              payment.tenant!, 
+                              payment, 
+                              payment.status === 'overdue' ? 'reminder' : 'reminder'
+                            )}
+                            title="Hubungi via WhatsApp"
+                          >
+                            <MessageCircle className="h-4 w-4 text-green-600" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {payment.tenant?.room ? (
                         <Badge variant="outline">Kamar {payment.tenant.room.room_number}</Badge>
@@ -177,6 +283,18 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {payment.tenant?.phone && (
+                            <>
+                              <DropdownMenuItem 
+                                onClick={() => handleWhatsApp(payment.tenant!, payment, 'reminder')}
+                                className="text-green-600"
+                              >
+                                <MessageCircle className="mr-2 h-4 w-4" />
+                                WhatsApp Penyewa
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
                           {payment.status === "pending" && payment.proof_url && (
                             <>
                               <DropdownMenuItem onClick={() => setViewProofPayment(payment)}>
@@ -218,7 +336,23 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
             <CardContent className="p-4">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <p className="font-semibold">{payment.tenant?.name || "Unknown"}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold">{payment.tenant?.name || "Unknown"}</p>
+                    {payment.tenant?.phone && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleWhatsApp(
+                          payment.tenant!, 
+                          payment, 
+                          payment.status === 'overdue' ? 'reminder' : 'reminder'
+                        )}
+                      >
+                        <MessageCircle className="h-4 w-4 text-green-600" />
+                      </Button>
+                    )}
+                  </div>
                   {payment.tenant?.room && (
                     <Badge variant="outline" className="mt-1">
                       Kamar {payment.tenant.room.room_number}
@@ -255,6 +389,17 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
               </div>
 
               <div className="flex gap-2 mt-4">
+                {payment.tenant?.phone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleWhatsApp(payment.tenant!, payment, 'reminder')}
+                    className="flex-1 text-green-600 border-green-600"
+                  >
+                    <MessageCircle className="mr-1 h-3 w-3" />
+                    WA
+                  </Button>
+                )}
                 {payment.status === "pending" && payment.proof_url && (
                   <Button
                     variant="outline"
@@ -321,6 +466,18 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
           )}
           {viewProofPayment?.status === "pending" && (
             <DialogFooter className="gap-2 sm:gap-0">
+              {viewProofPayment.tenant?.phone && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleWhatsApp(viewProofPayment.tenant!, viewProofPayment, 'reminder')
+                  }}
+                  className="text-green-600 border-green-600"
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  WhatsApp
+                </Button>
+              )}
               <Button
                 variant="destructive"
                 onClick={() => {
@@ -365,7 +522,20 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {rejectPaymentData?.tenant?.phone && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  handleWhatsApp(rejectPaymentData.tenant!, rejectPaymentData, 'rejected', rejectReason)
+                  setRejectPaymentData(null)
+                }}
+                className="text-green-600 border-green-600"
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Kirim via WA & Tolak
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setRejectPaymentData(null)}>
               Batal
             </Button>
