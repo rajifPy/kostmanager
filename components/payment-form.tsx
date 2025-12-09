@@ -260,7 +260,7 @@ const LoadingOverlay = ({ message = "Mengirim bukti pembayaran..." }: { message?
         <div className="mt-6 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
           <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full animate-pulse" style={{
             width: '100%',
-            animation: 'progress 2s ease-in-out infinite'
+            animation: 'progress 4s ease-in-out infinite'
           }}></div>
         </div>
       </div>
