@@ -140,8 +140,6 @@ export default async function StatisticsPage() {
     <>
       <Header title="Statistik & Analisis" />
       <main className="flex-1 overflow-y-auto p-6">
-        import { ExportPDFButton } from "@/components/statistics/export-pdf-button"
-
 // Di dalam component, setelah Header:
 <Header title="Statistik & Analisis" />
 <main className="flex-1 overflow-y-auto p-6">
@@ -398,4 +396,5 @@ export default async function StatisticsPage() {
   )
 
 }
+
 
