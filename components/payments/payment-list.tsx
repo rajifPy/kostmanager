@@ -32,10 +32,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Edit, Trash2, CreditCard, MoreHorizontal, CheckCircle, XCircle, Eye, FileImage, MessageCircle } from "lucide-react"
+import { Edit, Trash2, CreditCard, MoreHorizontal, CheckCircle, XCircle, Eye, FileImage, MessageCircle, FileText } from "lucide-react"
 import { PaymentForm } from "./payment-form"
 import { deletePayment, verifyPayment, rejectPayment } from "@/app/actions/payments"
 import type { Payment, Tenant } from "@/lib/types"
+import { GenerateReceiptPDF } from "./receipt-pdf-generator"
 
 interface PaymentListProps {
   payments: Payment[]
@@ -158,6 +159,11 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
     await verifyPayment(payment.id)
     setIsVerifying(false)
     setViewProofPayment(null)
+    
+    // Optional: Auto-generate PDF after verification
+    // setTimeout(() => {
+    //   // Trigger PDF generation
+    // }, 500)
   }
 
   const handleReject = async () => {
@@ -310,6 +316,37 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                               Tandai Lunas
                             </DropdownMenuItem>
                           )}
+                          
+                          {/* PDF Receipt Options */}
+                          {payment.status === "paid" && payment.proof_url && (
+                            <>
+                              <DropdownMenuItem asChild>
+                                <div className="w-full">
+                                  <GenerateReceiptPDF 
+                                    payment={payment} 
+                                    status="approved" 
+                                  />
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          
+                          {payment.status === "rejected" && payment.proof_url && (
+                            <>
+                              <DropdownMenuItem asChild>
+                                <div className="w-full">
+                                  <GenerateReceiptPDF 
+                                    payment={payment} 
+                                    status="rejected"
+                                    reason={payment.notes || undefined}
+                                  />
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          
                           <DropdownMenuItem onClick={() => setEditPayment(payment)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
@@ -388,24 +425,47 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-4">
+              <div className="flex flex-wrap gap-2 mt-4">
                 {payment.tenant?.phone && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleWhatsApp(payment.tenant!, payment, 'reminder')}
-                    className="flex-1 text-green-600 border-green-600"
+                    className="flex-1 min-w-[80px] text-green-600 border-green-600"
                   >
                     <MessageCircle className="mr-1 h-3 w-3" />
                     WA
                   </Button>
                 )}
+                
+                {/* PDF Receipt Buttons for Mobile */}
+                {payment.status === "paid" && payment.proof_url && (
+                  <GenerateReceiptPDF 
+                    payment={payment} 
+                    status="approved" 
+                    className="flex-1 min-w-[80px]"
+                    variant="outline"
+                    size="sm"
+                  />
+                )}
+                
+                {payment.status === "rejected" && payment.proof_url && (
+                  <GenerateReceiptPDF 
+                    payment={payment} 
+                    status="rejected"
+                    reason={payment.notes || undefined}
+                    className="flex-1 min-w-[80px]"
+                    variant="outline"
+                    size="sm"
+                  />
+                )}
+                
                 {payment.status === "pending" && payment.proof_url && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setViewProofPayment(payment)}
-                    className="flex-1"
+                    className="flex-1 min-w-[80px]"
                   >
                     <Eye className="mr-1 h-3 w-3" />
                     Verifikasi
@@ -416,18 +476,19 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => handleVerify(payment)}
-                    className="flex-1"
+                    className="flex-1 min-w-[80px]"
                   >
                     <CheckCircle className="mr-1 h-3 w-3" />
                     Lunas
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setEditPayment(payment)} className="flex-1">
+                <Button variant="outline" size="sm" onClick={() => setEditPayment(payment)} className="flex-1 min-w-[80px]">
                   <Edit className="mr-1 h-3 w-3" />
                   Edit
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setDeletePaymentId(payment.id)} className="text-destructive">
+                <Button variant="outline" size="sm" onClick={() => setDeletePaymentId(payment.id)} className="flex-1 min-w-[80px] text-destructive">
                   <Trash2 className="h-3 w-3" />
+                  Hapus
                 </Button>
               </div>
             </CardContent>
@@ -466,6 +527,7 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
           )}
           {viewProofPayment?.status === "pending" && (
             <DialogFooter className="gap-2 sm:gap-0">
+              {/* Tombol WhatsApp */}
               {viewProofPayment.tenant?.phone && (
                 <Button
                   variant="outline"
@@ -478,6 +540,8 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                   WhatsApp
                 </Button>
               )}
+              
+              {/* Tombol Tolak */}
               <Button
                 variant="destructive"
                 onClick={() => {
@@ -488,6 +552,8 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                 <XCircle className="mr-2 h-4 w-4" />
                 Tolak
               </Button>
+              
+              {/* Tombol Verifikasi */}
               <Button onClick={() => handleVerify(viewProofPayment)} disabled={isVerifying}>
                 {isVerifying ? (
                   "Memproses..."
