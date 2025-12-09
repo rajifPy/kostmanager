@@ -17,9 +17,10 @@ interface PaymentFormProps {
   tenants: TenantWithPayment[]
 }
 
-export default function PaymentForm({ tenants }: PaymentFormProps) {
+export function TenantPaymentForm({ tenants }: PaymentFormProps) {
   const [tenantId, setTenantId] = useState("")
   const [amount, setAmount] = useState("")
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]) // Default to today
   const [notes, setNotes] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -49,7 +50,7 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
 
   const handleDownloadQR = () => {
     const link = document.createElement('a')
-    link.href = '/qr-payment.jpg'
+    link.href = '/kodeQR.jpg'
     link.download = 'QR-Pembayaran-BNI.jpg'
     document.body.appendChild(link)
     link.click()
@@ -58,7 +59,7 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!tenantId || !amount || !file) {
+    if (!tenantId || !amount || !file || !paymentDate) {
       setError("Mohon lengkapi semua field yang diperlukan")
       return
     }
@@ -76,19 +77,23 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
       const { error: uploadError } = await supabase.storage.from("payment-proofs").upload(fileName, file)
 
       if (uploadError) {
-        // If bucket doesn't exist, save without proof URL for now
         console.error("Upload error:", uploadError)
       }
 
       // Get public URL
       const { data: urlData } = supabase.storage.from("payment-proofs").getPublicUrl(fileName)
 
-      // Create payment record
+      // Find the latest payment for this tenant to use as due_date reference
+      const latestPayment = selectedTenant?.latestPayment
+      const dueDate = latestPayment?.due_date || new Date().toISOString().split("T")[0]
+
+      // Create payment record with payment date
       const { error: insertError } = await supabase.from("payments").insert({
         tenant_id: tenantId,
         amount: Number.parseFloat(amount),
-        due_date: new Date().toISOString().split("T")[0],
-        status: "pending",
+        due_date: dueDate, // Use the due date from latest payment or today
+        paid_date: paymentDate, // Use the actual payment date from form
+        status: "pending", // Admin needs to verify
         notes: notes || null,
         proof_url: urlData?.publicUrl || null,
       })
@@ -98,6 +103,7 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
       setSuccess(true)
       setTenantId("")
       setAmount("")
+      setPaymentDate(new Date().toISOString().split('T')[0])
       setNotes("")
       setFile(null)
 
@@ -156,6 +162,19 @@ export default function PaymentForm({ tenants }: PaymentFormProps) {
           onChange={(e) => setAmount(e.target.value)}
           required
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="paymentDate">Tanggal Pembayaran</Label>
+        <Input
+          id="paymentDate"
+          type="date"
+          value={paymentDate}
+          onChange={(e) => setPaymentDate(e.target.value)}
+          max={new Date().toISOString().split('T')[0]} // Can't select future date
+          required
+        />
+        <p className="text-xs text-muted-foreground">Pilih tanggal saat Anda melakukan pembayaran</p>
       </div>
 
       <div className="space-y-2">
