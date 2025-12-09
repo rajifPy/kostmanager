@@ -35,147 +35,171 @@ export function GenerateReceiptPDF({ payment, status, reason }: GenerateReceiptP
     })
   }
 
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
   const generatePDF = async () => {
     try {
       setIsGenerating(true)
 
       // Dynamically import jsPDF dan autoTable
-      const [{ default: jsPDF }] = await Promise.all([
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
         import('jspdf'),
         import('jspdf-autotable')
       ])
 
-      const doc = new jsPDF()
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      })
+      
       const pageWidth = doc.internal.pageSize.width
       const pageHeight = doc.internal.pageSize.height
+      const margin = 20
+      const contentWidth = pageWidth - (margin * 2)
 
-      // Header
-      doc.setFillColor(79, 70, 229) // Primary color
-      doc.rect(0, 0, pageWidth, 40, 'F')
-
+      // Header dengan background gradient
+      doc.setFillColor(59, 130, 246) // Blue-500
+      doc.rect(0, 0, pageWidth, 35, 'F')
+      
+      // Logo/Title
       doc.setTextColor(255, 255, 255)
-      doc.setFontSize(24)
-      doc.text("KostManager", pageWidth / 2, 20, { align: "center" })
-      doc.setFontSize(12)
-      doc.text("Bukti Verifikasi Pembayaran", pageWidth / 2, 30, { align: "center" })
+      doc.setFontSize(20)
+      doc.setFont("helvetica", "bold")
+      doc.text("KOST MANAGER", pageWidth / 2, 20, { align: "center" })
+      
+      doc.setFontSize(11)
+      doc.setFont("helvetica", "normal")
+      doc.text("SISTEM MANAJEMEN KOST TERPADU", pageWidth / 2, 27, { align: "center" })
+
+      // Title Document
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(16)
+      doc.setFont("helvetica", "bold")
+      doc.text("BUKTI VERIFIKASI PEMBAYARAN", pageWidth / 2, 50, { align: "center" })
 
       // Status Badge
-      let yPos = 50
-      doc.setFontSize(14)
-      
+      doc.setFontSize(12)
       if (status === "approved") {
         doc.setFillColor(34, 197, 94) // Green
+        doc.roundedRect(pageWidth / 2 - 25, 55, 50, 12, 3, 3, 'F')
         doc.setTextColor(255, 255, 255)
-        doc.roundedRect(pageWidth / 2 - 30, yPos, 60, 12, 3, 3, 'F')
-        doc.text("✓ DISETUJUI", pageWidth / 2, yPos + 8, { align: "center" })
+        doc.text("DISETUJUI", pageWidth / 2, 62.5, { align: "center" })
       } else {
         doc.setFillColor(239, 68, 68) // Red
+        doc.roundedRect(pageWidth / 2 - 25, 55, 50, 12, 3, 3, 'F')
         doc.setTextColor(255, 255, 255)
-        doc.roundedRect(pageWidth / 2 - 25, yPos, 50, 12, 3, 3, 'F')
-        doc.text("✗ DITOLAK", pageWidth / 2, yPos + 8, { align: "center" })
+        doc.text("DITOLAK", pageWidth / 2, 62.5, { align: "center" })
       }
 
-      yPos += 25
-
-      // Reset text color
-      doc.setTextColor(40, 40, 40)
-      doc.setFontSize(10)
-
-      // Transaction ID
-      doc.setFontSize(9)
+      // Metadata
       doc.setTextColor(100, 100, 100)
-      doc.text(`ID Transaksi: ${payment.id.substring(0, 8).toUpperCase()}`, pageWidth / 2, yPos, { align: "center" })
-      yPos += 5
-      doc.text(`Tanggal Verifikasi: ${formatDate(new Date().toISOString())}`, pageWidth / 2, yPos, { align: "center" })
+      doc.setFontSize(9)
+      doc.setFont("helvetica", "normal")
+      doc.text(`ID Transaksi: ${payment.id.substring(0, 8).toUpperCase()}`, margin, 80)
+      doc.text(`Tanggal Verifikasi: ${formatDateTime(new Date().toISOString())}`, pageWidth - margin, 80, { align: "right" })
+
+      // Divider
+      doc.setDrawColor(200, 200, 200)
+      doc.line(margin, 85, pageWidth - margin, 85)
+
+      // Tenant Information
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(12)
+      doc.setFont("helvetica", "bold")
+      doc.text("INFORMASI PENYEWA", margin, 95)
+
+      const tenantData = [
+        ["Nama", ":", payment.tenant?.name || "-"],
+        ["Kamar", ":", payment.tenant?.room?.room_number ? `Kamar ${payment.tenant.room.room_number}` : "-"],
+        ["No. Telepon", ":", payment.tenant?.phone || "-"],
+        ["Email", ":", payment.tenant?.email || "-"]
+      ]
+
+      let yPos = 105
+      doc.setFontSize(10)
+      doc.setFont("helvetica", "normal")
       
-      yPos += 15
-
-      // Divider
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, yPos, pageWidth - 20, yPos)
-      yPos += 15
-
-      // Tenant Information Section
-      doc.setFontSize(12)
-      doc.setTextColor(40, 40, 40)
-      doc.text("INFORMASI PENYEWA", 20, yPos)
-      yPos += 10
-
-      const tenantInfo = [
-        ["Nama", payment.tenant?.name || "-"],
-        ["Kamar", payment.tenant?.room?.room_number ? `Kamar ${payment.tenant.room.room_number}` : "-"],
-        ["No. Telepon", payment.tenant?.phone || "-"],
-        ["Email", payment.tenant?.email || "-"],
-      ]
-
-      doc.setFontSize(10)
-      tenantInfo.forEach(([label, value]) => {
+      tenantData.forEach(([label, separator, value]) => {
         doc.setTextColor(100, 100, 100)
-        doc.text(label, 25, yPos)
-        doc.setTextColor(40, 40, 40)
-        doc.text(`: ${value}`, 60, yPos)
+        doc.text(label, margin, yPos)
+        doc.setTextColor(0, 0, 0)
+        doc.text(`${separator} ${value}`, margin + 40, yPos)
         yPos += 7
       })
 
-      yPos += 8
-
-      // Divider
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, yPos, pageWidth - 20, yPos)
-      yPos += 15
-
-      // Payment Details Section
-      doc.setFontSize(12)
-      doc.setTextColor(40, 40, 40)
-      doc.text("DETAIL PEMBAYARAN", 20, yPos)
       yPos += 10
 
-      const paymentDetails = [
-        ["Jumlah Pembayaran", formatCurrency(payment.amount)],
-        ["Tanggal Jatuh Tempo", formatDate(payment.due_date)],
-        ["Tanggal Bayar", payment.paid_date ? formatDate(payment.paid_date) : "-"],
-        ["Status Pembayaran", status === "approved" ? "LUNAS" : "DITOLAK"],
+      // Payment Details
+      doc.setFontSize(12)
+      doc.setFont("helvetica", "bold")
+      doc.text("DETAIL PEMBAYARAN", margin, yPos)
+      yPos += 10
+
+      const paymentData = [
+        ["Jumlah Pembayaran", ":", formatCurrency(payment.amount)],
+        ["Tanggal Jatuh Tempo", ":", formatDate(payment.due_date)],
+        ["Tanggal Bayar", ":", payment.paid_date ? formatDate(payment.paid_date) : "-"],
+        ["Metode Pembayaran", ":", "Transfer Bank"],
+        ["Status", ":", status === "approved" ? "LUNAS" : "DITOLAK"]
       ]
 
       doc.setFontSize(10)
-      paymentDetails.forEach(([label, value]) => {
+      doc.setFont("helvetica", "normal")
+      
+      paymentData.forEach(([label, separator, value]) => {
         doc.setTextColor(100, 100, 100)
-        doc.text(label, 25, yPos)
-        doc.setTextColor(40, 40, 40)
-        doc.text(`: ${value}`, 70, yPos)
+        doc.text(label, margin, yPos)
+        doc.setTextColor(0, 0, 0)
+        doc.text(`${separator} ${value}`, margin + 50, yPos)
         yPos += 7
       })
 
-      // Notes/Reason if rejected
+      // Notes/Reason
       if (payment.notes || reason) {
         yPos += 5
         doc.setTextColor(100, 100, 100)
-        doc.text("Catatan", 25, yPos)
-        doc.setTextColor(40, 40, 40)
+        doc.text("Catatan / Alasan", margin, yPos)
+        doc.setTextColor(0, 0, 0)
         const noteText = status === "rejected" && reason ? reason : payment.notes || "-"
-        const splitNote = doc.splitTextToSize(`: ${noteText}`, pageWidth - 90)
-        doc.text(splitNote, 70, yPos)
-        yPos += (splitNote.length * 5) + 5
+        const splitNote = doc.splitTextToSize(noteText, contentWidth - 50)
+        doc.text(splitNote, margin + 50, yPos)
+        yPos += (splitNote.length * 5) + 10
       }
 
-      yPos += 8
-
-      // Divider
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, yPos, pageWidth - 20, yPos)
-      yPos += 15
-
       // Proof Image Section (if available)
-      if (payment.proof_url) {
+      if (payment.proof_url && payment.proof_url.startsWith('http')) {
+        // Check if we need a new page
+        if (yPos > pageHeight - 80) {
+          doc.addPage()
+          yPos = margin
+        }
+
         doc.setFontSize(12)
-        doc.setTextColor(40, 40, 40)
-        doc.text("BUKTI PEMBAYARAN", 20, yPos)
+        doc.setFont("helvetica", "bold")
+        doc.text("BUKTI TRANSFER", margin, yPos)
         yPos += 10
 
         try {
-          // Try to embed the image
-          const imgData = await fetch(payment.proof_url)
-            .then(res => res.blob())
+          // Add loading text
+          doc.setFontSize(10)
+          doc.setTextColor(100, 100, 100)
+          doc.text("Memuat gambar bukti transfer...", pageWidth / 2, yPos, { align: "center" })
+          
+          // Load image
+          const imgData = await fetch(payment.proof_url, { mode: 'cors' })
+            .then(res => {
+              if (!res.ok) throw new Error('Failed to fetch image')
+              return res.blob()
+            })
             .then(blob => {
               return new Promise<string>((resolve, reject) => {
                 const reader = new FileReader()
@@ -185,56 +209,64 @@ export function GenerateReceiptPDF({ payment, status, reason }: GenerateReceiptP
               })
             })
 
-          const imgWidth = 150
-          const imgHeight = 100
+          const imgWidth = 120
+          const imgHeight = 80
           const xPos = (pageWidth - imgWidth) / 2
 
-          if (yPos + imgHeight > pageHeight - 30) {
+          if (yPos + imgHeight > pageHeight - 40) {
             doc.addPage()
-            yPos = 20
+            yPos = margin
           }
 
           doc.addImage(imgData, 'JPEG', xPos, yPos, imgWidth, imgHeight)
-          yPos += imgHeight + 10
+          
+          // Add caption
+          yPos += imgHeight + 5
+          doc.setFontSize(9)
+          doc.setTextColor(100, 100, 100)
+          doc.text("Bukti Transfer", pageWidth / 2, yPos, { align: "center" })
+          yPos += 5
         } catch (error) {
           console.error('Error loading image:', error)
           doc.setFontSize(9)
-          doc.setTextColor(100, 100, 100)
-          doc.text("(Bukti pembayaran tersedia di sistem)", 25, yPos)
-          doc.text(`URL: ${payment.proof_url}`, 25, yPos + 5)
-          yPos += 15
+          doc.setTextColor(150, 150, 150)
+          doc.text("(Bukti transfer tidak dapat dimuat)", pageWidth / 2, yPos, { align: "center" })
+          yPos += 10
         }
       }
 
       // Footer
-      const footerY = pageHeight - 25
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, footerY, pageWidth - 20, footerY)
+      const footerY = pageHeight - 20
+      doc.setDrawColor(220, 220, 220)
+      doc.line(margin, footerY, pageWidth - margin, footerY)
       
       doc.setFontSize(8)
       doc.setTextColor(120, 120, 120)
-      doc.text("Dokumen ini digenerate secara otomatis oleh sistem KostManager", pageWidth / 2, footerY + 6, { align: "center" })
-      doc.text(`Dicetak pada: ${new Date().toLocaleString("id-ID")}`, pageWidth / 2, footerY + 11, { align: "center" })
+      doc.text("Dokumen ini digenerate secara otomatis oleh sistem KostManager", pageWidth / 2, footerY + 5, { align: "center" })
+      doc.text(`Hal: 1/1 • Dicetak pada: ${new Date().toLocaleString("id-ID")}`, pageWidth / 2, footerY + 10, { align: "center" })
 
-      // Verification Note
-      if (status === "approved") {
+      // Verification Signature Area
+      const signatureY = yPos + 20
+      if (signatureY < footerY - 30) {
+        doc.setFontSize(10)
+        doc.setTextColor(0, 0, 0)
+        doc.text("Verifikasi oleh:", pageWidth - margin - 50, signatureY, { align: "left" })
+        
+        doc.line(pageWidth - margin - 50, signatureY + 15, pageWidth - margin, signatureY + 15)
         doc.setFontSize(9)
-        doc.setTextColor(34, 197, 94)
-        doc.text("✓ Pembayaran telah diverifikasi dan diterima", pageWidth / 2, footerY + 17, { align: "center" })
-      } else {
-        doc.setFontSize(9)
-        doc.setTextColor(239, 68, 68)
-        doc.text("✗ Pembayaran ditolak, mohon upload ulang bukti yang valid", pageWidth / 2, footerY + 17, { align: "center" })
+        doc.setTextColor(100, 100, 100)
+        doc.text("Admin KostManager", pageWidth - margin - 25, signatureY + 25, { align: "center" })
       }
 
       // Save the PDF
       const statusText = status === "approved" ? "Disetujui" : "Ditolak"
-      const fileName = `Bukti-Pembayaran-${statusText}-${payment.tenant?.name?.replace(/\s/g, '-') || 'Unknown'}-${new Date().toISOString().split('T')[0]}.pdf`
+      const tenantName = payment.tenant?.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'Unknown'
+      const fileName = `Bukti-Verifikasi-${statusText}-${tenantName}-${payment.id.substring(0, 6)}.pdf`
       doc.save(fileName)
 
     } catch (error) {
       console.error('Error generating PDF:', error)
-      alert('Terjadi kesalahan saat membuat PDF')
+      alert('Terjadi kesalahan saat membuat PDF. Silakan coba lagi.')
     } finally {
       setIsGenerating(false)
     }
@@ -256,7 +288,7 @@ export function GenerateReceiptPDF({ payment, status, reason }: GenerateReceiptP
       ) : (
         <>
           <FileDown className="h-4 w-4" />
-          Unduh Bukti PDF
+          {status === "approved" ? "Unduh Bukti" : "Unduh Penolakan"}
         </>
       )}
     </Button>
