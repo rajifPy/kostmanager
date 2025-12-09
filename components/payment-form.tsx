@@ -182,7 +182,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
         <div className="rounded-lg border bg-muted/50 p-4 flex flex-col items-center">
           <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center overflow-hidden">
             <img 
-              src="/kodeQR.jpg" 
+              src="/qr-payment.jpg" 
               alt="QR Code Pembayaran BNI" 
               className="max-w-full max-h-full object-contain"
               onError={(e) => {
