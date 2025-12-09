@@ -15,7 +15,7 @@ import {
   Building2
 } from "lucide-react"
 import type { Payment, Tenant, Room } from "@/lib/types"
-import { ExportPDFButton } from "@/components/statistics/export-pdf-button"
+import { ExportPDFButton } from "./export-pdf-button"
 
 async function getStatisticsData() {
   const supabase = await createClient()
@@ -398,3 +398,4 @@ export default async function StatisticsPage() {
   )
 
 }
+
