@@ -32,7 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Edit, Trash2, CreditCard, MoreHorizontal, CheckCircle, XCircle, Eye, FileImage, MessageCircle, FileDown } from "lucide-react"
+import { Edit, Trash2, CreditCard, MoreHorizontal, CheckCircle, XCircle, Eye, FileImage, MessageCircle } from "lucide-react"
 import { PaymentForm } from "./payment-form"
 import { deletePayment, verifyPayment, rejectPayment } from "@/app/actions/payments"
 import type { Payment, Tenant } from "@/lib/types"
@@ -112,244 +112,6 @@ Mohon segera lakukan pembayaran agar tidak terkena denda.
 - KostManager`
 }
 
-// PDF Generator Component
-function GenerateReceiptPDF({ 
-  payment, 
-  status, 
-  reason 
-}: { 
-  payment: Payment & { tenant?: Tenant }
-  status: "approved" | "rejected"
-  reason?: string 
-}) {
-  const [isGenerating, setIsGenerating] = useState(false)
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    })
-  }
-
-  const generatePDF = async () => {
-    try {
-      setIsGenerating(true)
-
-      const [{ default: jsPDF }] = await Promise.all([
-        import('jspdf'),
-        import('jspdf-autotable')
-      ])
-
-      const doc = new jsPDF()
-      const pageWidth = doc.internal.pageSize.width
-      const pageHeight = doc.internal.pageSize.height
-
-      // Header
-      doc.setFillColor(79, 70, 229)
-      doc.rect(0, 0, pageWidth, 40, 'F')
-
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(24)
-      doc.text("KostManager", pageWidth / 2, 20, { align: "center" })
-      doc.setFontSize(12)
-      doc.text("Bukti Verifikasi Pembayaran", pageWidth / 2, 30, { align: "center" })
-
-      let yPos = 50
-      doc.setFontSize(14)
-      
-      if (status === "approved") {
-        doc.setFillColor(34, 197, 94)
-        doc.setTextColor(255, 255, 255)
-        doc.roundedRect(pageWidth / 2 - 30, yPos, 60, 12, 3, 3, 'F')
-        doc.text("✓ DISETUJUI", pageWidth / 2, yPos + 8, { align: "center" })
-      } else {
-        doc.setFillColor(239, 68, 68)
-        doc.setTextColor(255, 255, 255)
-        doc.roundedRect(pageWidth / 2 - 25, yPos, 50, 12, 3, 3, 'F')
-        doc.text("✗ DITOLAK", pageWidth / 2, yPos + 8, { align: "center" })
-      }
-
-      yPos += 25
-      doc.setTextColor(40, 40, 40)
-      doc.setFontSize(9)
-      doc.setTextColor(100, 100, 100)
-      doc.text(`ID Transaksi: ${payment.id.substring(0, 8).toUpperCase()}`, pageWidth / 2, yPos, { align: "center" })
-      yPos += 5
-      doc.text(`Tanggal Verifikasi: ${formatDate(new Date().toISOString())}`, pageWidth / 2, yPos, { align: "center" })
-      
-      yPos += 15
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, yPos, pageWidth - 20, yPos)
-      yPos += 15
-
-      // Tenant Information
-      doc.setFontSize(12)
-      doc.setTextColor(40, 40, 40)
-      doc.text("INFORMASI PENYEWA", 20, yPos)
-      yPos += 10
-
-      const tenantInfo = [
-        ["Nama", payment.tenant?.name || "-"],
-        ["Kamar", payment.tenant?.room?.room_number ? `Kamar ${payment.tenant.room.room_number}` : "-"],
-        ["No. Telepon", payment.tenant?.phone || "-"],
-        ["Email", payment.tenant?.email || "-"],
-      ]
-
-      doc.setFontSize(10)
-      tenantInfo.forEach(([label, value]) => {
-        doc.setTextColor(100, 100, 100)
-        doc.text(label, 25, yPos)
-        doc.setTextColor(40, 40, 40)
-        doc.text(`: ${value}`, 60, yPos)
-        yPos += 7
-      })
-
-      yPos += 8
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, yPos, pageWidth - 20, yPos)
-      yPos += 15
-
-      // Payment Details
-      doc.setFontSize(12)
-      doc.setTextColor(40, 40, 40)
-      doc.text("DETAIL PEMBAYARAN", 20, yPos)
-      yPos += 10
-
-      const paymentDetails = [
-        ["Jumlah Pembayaran", formatCurrency(payment.amount)],
-        ["Tanggal Jatuh Tempo", formatDate(payment.due_date)],
-        ["Tanggal Bayar", payment.paid_date ? formatDate(payment.paid_date) : "-"],
-        ["Status Pembayaran", status === "approved" ? "LUNAS" : "DITOLAK"],
-      ]
-
-      doc.setFontSize(10)
-      paymentDetails.forEach(([label, value]) => {
-        doc.setTextColor(100, 100, 100)
-        doc.text(label, 25, yPos)
-        doc.setTextColor(40, 40, 40)
-        doc.text(`: ${value}`, 70, yPos)
-        yPos += 7
-      })
-
-      if (payment.notes || reason) {
-        yPos += 5
-        doc.setTextColor(100, 100, 100)
-        doc.text("Catatan", 25, yPos)
-        doc.setTextColor(40, 40, 40)
-        const noteText = status === "rejected" && reason ? reason : payment.notes || "-"
-        const splitNote = doc.splitTextToSize(`: ${noteText}`, pageWidth - 90)
-        doc.text(splitNote, 70, yPos)
-        yPos += (splitNote.length * 5) + 5
-      }
-
-      yPos += 8
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, yPos, pageWidth - 20, yPos)
-      yPos += 15
-
-      // Proof Image
-      if (payment.proof_url) {
-        doc.setFontSize(12)
-        doc.setTextColor(40, 40, 40)
-        doc.text("BUKTI PEMBAYARAN", 20, yPos)
-        yPos += 10
-
-        try {
-          const imgData = await fetch(payment.proof_url)
-            .then(res => res.blob())
-            .then(blob => {
-              return new Promise<string>((resolve, reject) => {
-                const reader = new FileReader()
-                reader.onloadend = () => resolve(reader.result as string)
-                reader.onerror = reject
-                reader.readAsDataURL(blob)
-              })
-            })
-
-          const imgWidth = 150
-          const imgHeight = 100
-          const xPos = (pageWidth - imgWidth) / 2
-
-          if (yPos + imgHeight > pageHeight - 30) {
-            doc.addPage()
-            yPos = 20
-          }
-
-          doc.addImage(imgData, 'JPEG', xPos, yPos, imgWidth, imgHeight)
-          yPos += imgHeight + 10
-        } catch (error) {
-          console.error('Error loading image:', error)
-          doc.setFontSize(9)
-          doc.setTextColor(100, 100, 100)
-          doc.text("(Bukti pembayaran tersedia di sistem)", 25, yPos)
-          yPos += 10
-        }
-      }
-
-      // Footer
-      const footerY = pageHeight - 25
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, footerY, pageWidth - 20, footerY)
-      
-      doc.setFontSize(8)
-      doc.setTextColor(120, 120, 120)
-      doc.text("Dokumen ini digenerate secara otomatis oleh sistem KostManager", pageWidth / 2, footerY + 6, { align: "center" })
-      doc.text(`Dicetak pada: ${new Date().toLocaleString("id-ID")}`, pageWidth / 2, footerY + 11, { align: "center" })
-
-      if (status === "approved") {
-        doc.setFontSize(9)
-        doc.setTextColor(34, 197, 94)
-        doc.text("✓ Pembayaran telah diverifikasi dan diterima", pageWidth / 2, footerY + 17, { align: "center" })
-      } else {
-        doc.setFontSize(9)
-        doc.setTextColor(239, 68, 68)
-        doc.text("✗ Pembayaran ditolak, mohon upload ulang bukti yang valid", pageWidth / 2, footerY + 17, { align: "center" })
-      }
-
-      const statusText = status === "approved" ? "Disetujui" : "Ditolak"
-      const fileName = `Bukti-Pembayaran-${statusText}-${payment.tenant?.name?.replace(/\s/g, '-') || 'Unknown'}-${new Date().toISOString().split('T')[0]}.pdf`
-      doc.save(fileName)
-
-    } catch (error) {
-      console.error('Error generating PDF:', error)
-      alert('Terjadi kesalahan saat membuat PDF')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  return (
-    <Button
-      onClick={generatePDF}
-      variant="ghost"
-      size="sm"
-      disabled={isGenerating}
-      className="w-full justify-start gap-2"
-    >
-      {isGenerating ? (
-        <>
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          Membuat PDF...
-        </>
-      ) : (
-        <>
-          <FileDown className="h-4 w-4" />
-          Unduh Bukti PDF
-        </>
-      )}
-    </Button>
-  )
-}
-
 export function PaymentList({ payments, tenants }: PaymentListProps) {
   const [editPayment, setEditPayment] = useState<Payment | null>(null)
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null)
@@ -359,8 +121,6 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const [isRejecting, setIsRejecting] = useState(false)
-  const [showPdfButton, setShowPdfButton] = useState(false)
-  const [verifiedPayment, setVerifiedPayment] = useState<Payment | null>(null)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -397,8 +157,6 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
     setIsVerifying(true)
     await verifyPayment(payment.id)
     setIsVerifying(false)
-    setVerifiedPayment(payment)
-    setShowPdfButton(true)
     setViewProofPayment(null)
   }
 
@@ -407,13 +165,12 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
     setIsRejecting(true)
     await rejectPayment(rejectPaymentData.id, rejectReason)
     setIsRejecting(false)
-    setVerifiedPayment(rejectPaymentData)
-    setShowPdfButton(true)
     setRejectPaymentData(null)
     setRejectReason("")
     setViewProofPayment(null)
   }
 
+  // Handle WhatsApp redirect
   const handleWhatsApp = (tenant: Tenant, payment: Payment, messageType: 'approved' | 'rejected' | 'reminder', reason?: string) => {
     const phone = formatWhatsAppNumber(tenant.phone)
     
@@ -426,9 +183,11 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
     const encodedMessage = encodeURIComponent(message)
     const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`
     
+    // Open in new tab
     window.open(whatsappUrl, '_blank')
   }
 
+  // Filter pending payments first
   const sortedPayments = [...payments].sort((a, b) => {
     if (a.status === "pending" && b.status !== "pending") return -1
     if (a.status !== "pending" && b.status === "pending") return 1
@@ -524,20 +283,6 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {(payment.status === "paid" || payment.status === "rejected") && payment.proof_url && (
-                            <>
-                              <DropdownMenuItem asChild>
-                                <div className="w-full">
-                                  <GenerateReceiptPDF 
-                                    payment={payment} 
-                                    status={payment.status === "paid" ? "approved" : "rejected"}
-                                    reason={payment.notes || undefined}
-                                  />
-                                </div>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
                           {payment.tenant?.phone && (
                             <>
                               <DropdownMenuItem 
@@ -545,159 +290,6 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                                 className="text-green-600"
                               >
                                 <MessageCircle className="mr-2 h-4 w-4" />
-                  WhatsApp
-                </Button>
-              )}
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  setRejectPaymentData(viewProofPayment)
-                }}
-                disabled={isVerifying}
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                Tolak
-              </Button>
-              <Button onClick={() => handleVerify(viewProofPayment)} disabled={isVerifying}>
-                {isVerifying ? (
-                  "Memproses..."
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Terima & Verifikasi
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Success Dialog with PDF Download */}
-      <Dialog open={showPdfButton} onOpenChange={setShowPdfButton}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {verifiedPayment?.status === "paid" ? "✅ Pembayaran Diverifikasi" : "❌ Pembayaran Ditolak"}
-            </DialogTitle>
-            <DialogDescription>
-              {verifiedPayment?.status === "paid" 
-                ? "Pembayaran telah berhasil diverifikasi. Anda dapat mengunduh bukti pembayaran dalam format PDF."
-                : "Pembayaran telah ditolak. Anda dapat mengunduh dokumen penolakan dalam format PDF."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {verifiedPayment && (
-              <div className="rounded-lg border p-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Penyewa:</span>
-                  <span className="text-sm font-medium">{verifiedPayment.tenant?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Jumlah:</span>
-                  <span className="text-sm font-medium">{formatCurrency(verifiedPayment.amount)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Status:</span>
-                  {getStatusBadge(verifiedPayment.status)}
-                </div>
-              </div>
-            )}
-            {verifiedPayment && (
-              <GenerateReceiptPDF 
-                payment={verifiedPayment} 
-                status={verifiedPayment.status === "paid" ? "approved" : "rejected"}
-                reason={verifiedPayment.notes || undefined}
-              />
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPdfButton(false)}>
-              Tutup
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reject Dialog */}
-      <Dialog open={!!rejectPaymentData} onOpenChange={() => setRejectPaymentData(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Tolak Pembayaran</DialogTitle>
-            <DialogDescription>Berikan alasan penolakan bukti pembayaran</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="reason">Alasan Penolakan</Label>
-              <Textarea
-                id="reason"
-                placeholder="Contoh: Bukti transfer tidak jelas, nominal tidak sesuai, dll."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            {rejectPaymentData?.tenant?.phone && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  handleWhatsApp(rejectPaymentData.tenant!, rejectPaymentData, 'rejected', rejectReason)
-                  setRejectPaymentData(null)
-                }}
-                className="text-green-600 border-green-600"
-              >
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Kirim via WA & Tolak
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => setRejectPaymentData(null)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={handleReject} disabled={isRejecting}>
-              {isRejecting ? "Memproses..." : "Tolak Pembayaran"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editPayment} onOpenChange={() => setEditPayment(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Pembayaran</DialogTitle>
-          </DialogHeader>
-          {editPayment && (
-            <PaymentForm payment={editPayment} tenants={tenants} onSuccess={() => setEditPayment(null)} />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <AlertDialog open={!!deletePaymentId} onOpenChange={() => setDeletePaymentId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Pembayaran?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Data pembayaran akan dihapus secara permanen.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Menghapus..." : "Hapus"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  )
-} h-4 w-4" />
                                 WhatsApp Penyewa
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -796,14 +388,7 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-4 flex-wrap">
-                {(payment.status === "paid" || payment.status === "rejected") && payment.proof_url && (
-                  <GenerateReceiptPDF 
-                    payment={payment} 
-                    status={payment.status === "paid" ? "approved" : "rejected"}
-                    reason={payment.notes || undefined}
-                  />
-                )}
+              <div className="flex gap-2 mt-4">
                 {payment.tenant?.phone && (
                   <Button
                     variant="outline"
@@ -889,4 +474,109 @@ export function PaymentList({ payments, tenants }: PaymentListProps) {
                   }}
                   className="text-green-600 border-green-600"
                 >
-                  <MessageCircle className="mr-2
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  WhatsApp
+                </Button>
+              )}
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setRejectPaymentData(viewProofPayment)
+                }}
+                disabled={isVerifying}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Tolak
+              </Button>
+              <Button onClick={() => handleVerify(viewProofPayment)} disabled={isVerifying}>
+                {isVerifying ? (
+                  "Memproses..."
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Terima & Verifikasi
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={!!rejectPaymentData} onOpenChange={() => setRejectPaymentData(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tolak Pembayaran</DialogTitle>
+            <DialogDescription>Berikan alasan penolakan bukti pembayaran</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason">Alasan Penolakan</Label>
+              <Textarea
+                id="reason"
+                placeholder="Contoh: Bukti transfer tidak jelas, nominal tidak sesuai, dll."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {rejectPaymentData?.tenant?.phone && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  handleWhatsApp(rejectPaymentData.tenant!, rejectPaymentData, 'rejected', rejectReason)
+                  setRejectPaymentData(null)
+                }}
+                className="text-green-600 border-green-600"
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Kirim via WA & Tolak
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setRejectPaymentData(null)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleReject} disabled={isRejecting}>
+              {isRejecting ? "Memproses..." : "Tolak Pembayaran"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editPayment} onOpenChange={() => setEditPayment(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Pembayaran</DialogTitle>
+          </DialogHeader>
+          {editPayment && (
+            <PaymentForm payment={editPayment} tenants={tenants} onSuccess={() => setEditPayment(null)} />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletePaymentId} onOpenChange={() => setDeletePaymentId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Pembayaran?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Data pembayaran akan dihapus secara permanen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
