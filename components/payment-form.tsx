@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, CheckCircle2, Download, Loader2 } from "lucide-react"
 import type { TenantWithPayment } from "@/lib/types"
 
-// Typewriter Loading Component
+// Sound effect for success
+const playSuccessSound = () => {
+  const audio = new Audio("/sound-effect-payment.mp3");
+  audio.play().catch(e => console.log("Audio play failed:", e));
+};
+
+// Typewriter Loading Component - Updated to 12 seconds
 const TypewriterLoader = () => {
   return (
     <div className="flex items-center justify-center">
@@ -23,7 +29,7 @@ const TypewriterLoader = () => {
           --paper: #EEF0FD;
           --text: #D3D4EC;
           --tool: #FBC56C;
-          --duration: 7s; /* Changed from 8s to 7s */
+          --duration: 12s; /* Updated from 7s to 12s */
           position: relative;
           animation: bounce05 var(--duration) linear infinite;
         }
@@ -211,8 +217,8 @@ const TypewriterLoader = () => {
           }
         }
 
-        /* Added new animation for 7-second dots */
-        @keyframes bounce-7s {
+        /* Updated animations for 12-second duration */
+        @keyframes bounce-12s {
           0%, 100% {
             transform: translateY(0);
             animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
@@ -223,11 +229,11 @@ const TypewriterLoader = () => {
           }
         }
 
-        .animate-bounce-7s {
-          animation: bounce-7s 7s infinite;
+        .animate-bounce-12s {
+          animation: bounce-12s 12s infinite;
         }
 
-        @keyframes progress-7s {
+        @keyframes progress-12s {
           0% {
             transform: translateX(-100%);
           }
@@ -245,7 +251,7 @@ const TypewriterLoader = () => {
   );
 };
 
-// Loading Overlay Component
+// Loading Overlay Component - Updated to 12 seconds
 const LoadingOverlay = ({ message = "Mengirim bukti pembayaran..." }: { message?: string }) => {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -265,20 +271,20 @@ const LoadingOverlay = ({ message = "Mengirim bukti pembayaran..." }: { message?
           </p>
         </div>
 
-        {/* Animated Dots - Updated to 7 seconds */}
+        {/* Animated Dots - Updated to 12 seconds */}
         <div className="mt-6 flex justify-center items-center gap-2">
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '0s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '1.4s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '2.8s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '4.2s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '5.6s'}}></div>
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '0s'}}></div>
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '2.4s'}}></div>
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '4.8s'}}></div>
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '7.2s'}}></div>
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '9.6s'}}></div>
         </div>
 
-        {/* Progress Bar - Updated to 7 seconds */}
+        {/* Progress Bar - Updated to 12 seconds */}
         <div className="mt-6 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
           <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full animate-pulse" style={{
             width: '100%',
-            animation: 'progress-7s 7s ease-in-out infinite'
+            animation: 'progress-12s 12s ease-in-out infinite'
           }}></div>
         </div>
       </div>
@@ -299,8 +305,22 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const successSoundPlayed = useRef(false)
 
   const selectedTenant = tenants.find((t) => t.id === tenantId)
+
+  // Play sound effect when success state becomes true
+  useEffect(() => {
+    if (success && !successSoundPlayed.current) {
+      playSuccessSound();
+      successSoundPlayed.current = true;
+    }
+    
+    // Reset the flag when success state is false
+    if (!success) {
+      successSoundPlayed.current = false;
+    }
+  }, [success]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -374,7 +394,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
       setIsLoading(false)
       setSuccess(true)
       
-      // Reset form after 3 seconds
+      // Reset form after 5 seconds (extended to match longer animation)
       setTimeout(() => {
         setSuccess(false)
         setTenantId("")
@@ -382,7 +402,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
         setPaymentDate(new Date().toISOString().split('T')[0])
         setNotes("")
         setFile(null)
-      }, 3000)
+      }, 5000)
       
     } catch (err) {
       setIsLoading(false)
@@ -397,12 +417,12 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
           <div className="flex flex-col items-center justify-center gap-6">
             {/* Animated Checkmark */}
             <div className="relative">
-              {/* Outer ring with ping animation - Updated to 7 seconds */}
-              <div className="absolute inset-0" style={{ animation: 'ping 7s cubic-bezier(0, 0, 0.2, 1) infinite' }}>
+              {/* Outer ring with ping animation - Updated to 12 seconds */}
+              <div className="absolute inset-0" style={{ animation: 'ping 12s cubic-bezier(0, 0, 0.2, 1) infinite' }}>
                 <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-green-500 opacity-20"></div>
               </div>
-              {/* Middle ring with slower pulse - Updated to 7 seconds */}
-              <div className="absolute inset-0" style={{ animation: 'pulse 7s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+              {/* Middle ring with slower pulse - Updated to 12 seconds */}
+              <div className="absolute inset-0" style={{ animation: 'pulse 12s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
                 <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-green-400 opacity-30"></div>
               </div>
               {/* Main checkmark circle */}
@@ -430,7 +450,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
             <div className="w-full mt-4 p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-green-200 dark:border-green-800">
               <div className="flex items-center justify-center gap-3 text-sm md:text-base">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500" style={{ animation: 'pulse 7s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-green-500" style={{ animation: 'pulse 12s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
                   <span className="text-gray-700 dark:text-gray-300 font-medium">Status:</span>
                 </div>
                 <span className="text-green-600 dark:text-green-400 font-semibold">Menunggu Verifikasi</span>
@@ -438,8 +458,8 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
             </div>
 
             {/* Auto redirect info */}
-            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 text-center" style={{ animation: 'pulse 7s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
-              Formulir akan direset otomatis dalam 3 detik...
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 text-center" style={{ animation: 'pulse 12s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+              Formulir akan direset otomatis dalam 5 detik...
             </p>
           </div>
         </div>
@@ -568,7 +588,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" style={{ animationDuration: '7s' }} />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" style={{ animationDuration: '12s' }} />
               Mengirim...
             </>
           ) : (
