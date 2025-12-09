@@ -187,7 +187,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
               className="max-w-full max-h-full object-contain"
               onError={(e) => {
                 const target = e.currentTarget as HTMLImageElement;
-                target.src = "/placeholder.svg";
+                target.src = "/qr-payment.jpg";
                 target.alt = "QR Code tidak dapat dimuat";
               }}
             />
