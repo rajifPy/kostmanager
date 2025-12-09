@@ -1,584 +1,201 @@
-"use client"
-
-import React, { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, CheckCircle2, Download, Loader2 } from "lucide-react"
-import type { TenantWithPayment } from "@/lib/types"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Building2, MapPin, Wifi, Car, UtensilsCrossed, Shield, Droplets, Zap, Users } from "lucide-react"
+import type { Room } from "@/lib/types"
+import { GalleryCard } from "@/components/gallery/gallery-card"
 
-// Typewriter Loading Component
-const TypewriterLoader = () => {
+const facilities = [
+  { icon: Wifi, name: "WiFi Gratis", description: "Internet cepat 24 jam" },
+  { icon: Car, name: "Parkir Luas", description: "Area parkir motor & mobil" },
+  { icon: UtensilsCrossed, name: "Dapur Bersama", description: "Fasilitas masak lengkap" },
+  { icon: Shield, name: "Keamanan 24 Jam", description: "CCTV & satpam" },
+  { icon: Droplets, name: "Air Bersih", description: "PAM & sumur bor" },
+  { icon: Zap, name: "Listrik Token", description: "Meteran per kamar" },
+]
+
+const galleryImages = [
+  { src: "/modern-kost-building-exterior.jpg", alt: "Tampak Depan Kost" },
+  { src: "/clean-minimalist-bedroom-with-bed-and-desk.jpg", alt: "Kamar Tidur" },
+  { src: "/clean-bathroom-shower.png", alt: "Kamar Mandi" },
+  { src: "/shared-kitchen-with-cooking-facilities.jpg", alt: "Dapur Bersama" },
+  { src: "/parking-area-with-motorcycles.jpg", alt: "Area Parkir" },
+  { src: "/living-room-common-area.jpg", alt: "Ruang Bersama" },
+]
+
+export default async function HomePage() {
+  const supabase = await createClient()
+
+  const { data: rooms } = await supabase.from("rooms").select("*").order("room_number")
+
+  const vacantRooms = (rooms as Room[] | null)?.filter((r) => r.status === "vacant") || []
+  const totalRooms = rooms?.length || 0
+
   return (
-    <div className="flex items-center justify-center">
-      <style jsx>{`
-        .typewriter {
-          --blue: #5C86FF;
-          --blue-dark: #275EFE;
-          --key: #fff;
-          --paper: #EEF0FD;
-          --text: #D3D4EC;
-          --tool: #FBC56C;
-          --duration: 7s; /* Changed from 8s to 7s */
-          position: relative;
-          animation: bounce05 var(--duration) linear infinite;
-        }
-
-        .typewriter .slide {
-          width: 92px;
-          height: 20px;
-          border-radius: 3px;
-          margin-left: 14px;
-          transform: translateX(14px);
-          background: linear-gradient(var(--blue), var(--blue-dark));
-          animation: slide05 var(--duration) ease infinite;
-        }
-
-        .typewriter .slide:before,
-        .typewriter .slide:after,
-        .typewriter .slide i:before {
-          content: "";
-          position: absolute;
-          background: var(--tool);
-        }
-
-        .typewriter .slide:before {
-          width: 2px;
-          height: 8px;
-          top: 6px;
-          left: 100%;
-        }
-
-        .typewriter .slide:after {
-          left: 94px;
-          top: 3px;
-          height: 14px;
-          width: 6px;
-          border-radius: 3px;
-        }
-
-        .typewriter .slide i {
-          display: block;
-          position: absolute;
-          right: 100%;
-          width: 6px;
-          height: 4px;
-          top: 4px;
-          background: var(--tool);
-        }
-
-        .typewriter .slide i:before {
-          right: 100%;
-          top: -2px;
-          width: 4px;
-          border-radius: 2px;
-          height: 14px;
-        }
-
-        .typewriter .paper {
-          position: absolute;
-          left: 24px;
-          top: -26px;
-          width: 40px;
-          height: 46px;
-          border-radius: 5px;
-          background: var(--paper);
-          transform: translateY(46px);
-          animation: paper05 var(--duration) linear infinite;
-        }
-
-        .typewriter .paper:before {
-          content: "";
-          position: absolute;
-          left: 6px;
-          right: 6px;
-          top: 7px;
-          border-radius: 2px;
-          height: 4px;
-          transform: scaleY(0.8);
-          background: var(--text);
-          box-shadow: 0 12px 0 var(--text), 0 24px 0 var(--text), 0 36px 0 var(--text);
-        }
-
-        .typewriter .keyboard {
-          width: 120px;
-          height: 56px;
-          margin-top: -10px;
-          z-index: 1;
-          position: relative;
-        }
-
-        .typewriter .keyboard:before,
-        .typewriter .keyboard:after {
-          content: "";
-          position: absolute;
-        }
-
-        .typewriter .keyboard:before {
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          border-radius: 7px;
-          background: linear-gradient(135deg, var(--blue), var(--blue-dark));
-          transform: perspective(10px) rotateX(2deg);
-          transform-origin: 50% 100%;
-        }
-
-        .typewriter .keyboard:after {
-          left: 2px;
-          top: 25px;
-          width: 11px;
-          height: 4px;
-          border-radius: 2px;
-          box-shadow: 15px 0 0 var(--key), 30px 0 0 var(--key), 45px 0 0 var(--key),
-            60px 0 0 var(--key), 75px 0 0 var(--key), 90px 0 0 var(--key),
-            22px 10px 0 var(--key), 37px 10px 0 var(--key), 52px 10px 0 var(--key),
-            60px 10px 0 var(--key), 68px 10px 0 var(--key), 83px 10px 0 var(--key);
-          animation: keyboard05 var(--duration) linear infinite;
-        }
-
-        @keyframes bounce05 {
-          85%, 92%, 100% {
-            transform: translateY(0);
-          }
-          89% {
-            transform: translateY(-4px);
-          }
-          95% {
-            transform: translateY(2px);
-          }
-        }
-
-        @keyframes slide05 {
-          5% {
-            transform: translateX(14px);
-          }
-          15%, 30% {
-            transform: translateX(6px);
-          }
-          40%, 55% {
-            transform: translateX(0);
-          }
-          65%, 70% {
-            transform: translateX(-4px);
-          }
-          80%, 89% {
-            transform: translateX(-12px);
-          }
-          100% {
-            transform: translateX(14px);
-          }
-        }
-
-        @keyframes paper05 {
-          5% {
-            transform: translateY(46px);
-          }
-          20%, 30% {
-            transform: translateY(34px);
-          }
-          40%, 55% {
-            transform: translateY(22px);
-          }
-          65%, 70% {
-            transform: translateY(10px);
-          }
-          80%, 85% {
-            transform: translateY(0);
-          }
-          92%, 100% {
-            transform: translateY(46px);
-          }
-        }
-
-        @keyframes keyboard05 {
-          5%, 12%, 21%, 30%, 39%, 48%, 57%, 66%, 75%, 84% {
-            box-shadow: 15px 0 0 var(--key), 30px 0 0 var(--key), 45px 0 0 var(--key),
-              60px 0 0 var(--key), 75px 0 0 var(--key), 90px 0 0 var(--key),
-              22px 10px 0 var(--key), 37px 10px 0 var(--key), 52px 10px 0 var(--key),
-              60px 10px 0 var(--key), 68px 10px 0 var(--key), 83px 10px 0 var(--key);
-          }
-          9% {
-            box-shadow: 15px 2px 0 var(--key), 30px 0 0 var(--key), 45px 0 0 var(--key),
-              60px 0 0 var(--key), 75px 0 0 var(--key), 90px 0 0 var(--key),
-              22px 10px 0 var(--key), 37px 10px 0 var(--key), 52px 10px 0 var(--key),
-              60px 10px 0 var(--key), 68px 10px 0 var(--key), 83px 10px 0 var(--key);
-          }
-        }
-
-        /* Added new animation for 7-second dots */
-        @keyframes bounce-7s {
-          0%, 100% {
-            transform: translateY(0);
-            animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
-          }
-          50% {
-            transform: translateY(-25%);
-            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-          }
-        }
-
-        .animate-bounce-7s {
-          animation: bounce-7s 7s infinite;
-        }
-
-        @keyframes progress-7s {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-      `}</style>
-      <div className="typewriter">
-        <div className="slide"><i /></div>
-        <div className="paper" />
-        <div className="keyboard" />
-      </div>
-    </div>
-  );
-};
-
-// Loading Overlay Component
-const LoadingOverlay = ({ message = "Mengirim bukti pembayaran..." }: { message?: string }) => {
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-2xl max-w-sm md:max-w-md w-full mx-4 animate-in zoom-in duration-300">
-        {/* Typewriter Animation */}
-        <div className="mb-6">
-          <TypewriterLoader />
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Link href="/" className="flex items-center gap-2 text-primary">
+            <Building2 className="h-6 w-6" />
+            <span className="text-xl font-bold">KostManager</span>
+          </Link>
+          <nav className="flex items-center gap-4">
+            <Link href="/penyewa" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              Daftar Penyewa
+            </Link>
+            <Link href="/auth/login">
+              <Button variant="outline" size="sm">
+                Admin Login
+              </Button>
+            </Link>
+          </nav>
         </div>
-        
-        {/* Loading Text */}
-        <div className="text-center space-y-3">
-          <h3 className="text-lg md:text-xl font-bold text-gray-800 dark:text-gray-100">
-            {message}
-          </h3>
-          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">
-            Mohon tunggu sebentar...
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-b from-primary/5 to-background py-20">
+        <div className="container mx-auto px-4 text-center">
+          <Badge variant="secondary" className="mb-4">
+            Kost Nyaman & Strategis
+          </Badge>
+          <h1 className="text-balance text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
+            Temukan Hunian Nyaman
+            <br />
+            di Lokasi Strategis
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-lg text-muted-foreground">
+            Kost dengan fasilitas lengkap, keamanan 24 jam, dan harga terjangkau. Cocok untuk mahasiswa dan pekerja.
           </p>
-        </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Link href="/penyewa">
+              <Button size="lg">Lihat Daftar Penyewa</Button>
+            </Link>
+            <Link href="#kamar">
+              <Button size="lg" variant="outline">
+                Cek Ketersediaan
+              </Button>
+            </Link>
+          </div>
 
-        {/* Animated Dots - Updated to 7 seconds */}
-        <div className="mt-6 flex justify-center items-center gap-2">
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '0s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '1.4s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '2.8s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '4.2s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-7s" style={{animationDelay: '5.6s'}}></div>
-        </div>
-
-        {/* Progress Bar - Updated to 7 seconds */}
-        <div className="mt-6 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full animate-pulse" style={{
-            width: '100%',
-            animation: 'progress-7s 7s ease-in-out infinite'
-          }}></div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-interface PaymentFormProps {
-  tenants: TenantWithPayment[]
-}
-
-export function TenantPaymentForm({ tenants }: PaymentFormProps) {
-  const [tenantId, setTenantId] = useState("")
-  const [amount, setAmount] = useState("")
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0])
-  const [notes, setNotes] = useState("")
-  const [file, setFile] = useState<File | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const selectedTenant = tenants.find((t) => t.id === tenantId)
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
-      if (!allowedTypes.includes(selectedFile.type)) {
-        setError("File harus berupa gambar (JPG, PNG, WebP) atau PDF")
-        return
-      }
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError("Ukuran file maksimal 5MB")
-        return
-      }
-      setFile(selectedFile)
-      setError(null)
-    }
-  }
-
-  const handleDownloadQR = () => {
-    const link = document.createElement('a')
-    link.href = '/qr-payment.jpg'
-    link.download = 'QR-Pembayaran-BNI.jpg'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!tenantId || !amount || !file || !paymentDate) {
-      setError("Mohon lengkapi semua field yang diperlukan")
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-
-    const supabase = createClient()
-
-    try {
-      // Upload file to Supabase Storage
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${tenantId}-${Date.now()}.${fileExt}`
-
-      const { error: uploadError } = await supabase.storage.from("payment-proofs").upload(fileName, file)
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError)
-      }
-
-      // Get public URL
-      const { data: urlData } = supabase.storage.from("payment-proofs").getPublicUrl(fileName)
-
-      // Find the latest payment for this tenant to use as due_date reference
-      const latestPayment = selectedTenant?.latestPayment
-      const dueDate = latestPayment?.due_date || new Date().toISOString().split("T")[0]
-
-      // Create payment record with payment date
-      const { error: insertError } = await supabase.from("payments").insert({
-        tenant_id: tenantId,
-        amount: Number.parseFloat(amount),
-        due_date: dueDate,
-        paid_date: paymentDate,
-        status: "pending",
-        notes: notes || null,
-        proof_url: urlData?.publicUrl || null,
-      })
-
-      if (insertError) throw insertError
-
-      setIsLoading(false)
-      setSuccess(true)
-      
-      // Reset form after 3 seconds
-      setTimeout(() => {
-        setSuccess(false)
-        setTenantId("")
-        setAmount("")
-        setPaymentDate(new Date().toISOString().split('T')[0])
-        setNotes("")
-        setFile(null)
-      }, 3000)
-      
-    } catch (err) {
-      setIsLoading(false)
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat mengirim pembayaran")
-    }
-  }
-
-  if (success) {
-    return (
-      <div className="w-full max-w-2xl mx-auto">
-        <div className="rounded-2xl border-2 border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 p-8 md:p-12 shadow-xl">
-          <div className="flex flex-col items-center justify-center gap-6">
-            {/* Animated Checkmark */}
-            <div className="relative">
-              {/* Outer ring with ping animation - Updated to 7 seconds */}
-              <div className="absolute inset-0" style={{ animation: 'ping 7s cubic-bezier(0, 0, 0.2, 1) infinite' }}>
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-green-500 opacity-20"></div>
-              </div>
-              {/* Middle ring with slower pulse - Updated to 7 seconds */}
-              <div className="absolute inset-0" style={{ animation: 'pulse 7s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-green-400 opacity-30"></div>
-              </div>
-              {/* Main checkmark circle */}
-              <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg transform transition-transform duration-700 hover:scale-105">
-                <CheckCircle2 className="w-14 h-14 md:w-16 md:h-16 text-white animate-in zoom-in duration-700" strokeWidth={2.5} />
-              </div>
+          {/* Stats */}
+          <div className="mt-12 flex flex-wrap justify-center gap-8">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-primary">{totalRooms}</p>
+              <p className="text-sm text-muted-foreground">Total Kamar</p>
             </div>
-
-            {/* Success Text */}
-            <div className="text-center space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <h3 className="text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400">
-                🎉 Berhasil Dikirim!
-              </h3>
-              <div className="space-y-2">
-                <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 font-medium">
-                  Bukti pembayaran Anda telah diterima
-                </p>
-                <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">
-                  Mohon tunggu verifikasi dari admin
-                </p>
-              </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-primary">{vacantRooms.length}</p>
+              <p className="text-sm text-muted-foreground">Kamar Tersedia</p>
             </div>
-
-            {/* Status Info */}
-            <div className="w-full mt-4 p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-green-200 dark:border-green-800">
-              <div className="flex items-center justify-center gap-3 text-sm md:text-base">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500" style={{ animation: 'pulse 7s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
-                  <span className="text-gray-700 dark:text-gray-300 font-medium">Status:</span>
-                </div>
-                <span className="text-green-600 dark:text-green-400 font-semibold">Menunggu Verifikasi</span>
-              </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-primary">24/7</p>
+              <p className="text-sm text-muted-foreground">Keamanan</p>
             </div>
-
-            {/* Auto redirect info */}
-            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 text-center" style={{ animation: 'pulse 7s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
-              Formulir akan direset otomatis dalam 3 detik...
-            </p>
           </div>
         </div>
-      </div>
-    )
-  }
+      </section>
 
-  return (
-    <>
-      {isLoading && <LoadingOverlay message="Mengunggah bukti pembayaran..." />}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="tenant">Pilih Nama Penyewa</Label>
-          <Select value={tenantId} onValueChange={setTenantId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih penyewa" />
-            </SelectTrigger>
-            <SelectContent>
-              {tenants.map((tenant) => (
-                <SelectItem key={tenant.id} value={tenant.id}>
-                  {tenant.name} - Kamar {tenant.room?.room_number || "-"}
-                </SelectItem>
+      {/* Gallery Section with 3D Flip Cards */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="mb-8 text-center text-3xl font-bold">Galeri Kost</h2>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {galleryImages.map((image, index) => (
+              <GalleryCard key={index} image={image.src} title={image.alt} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Facilities Section */}
+      <section className="bg-muted/30 py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="mb-8 text-center text-3xl font-bold">Fasilitas</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {facilities.map((facility, index) => (
+              <Card key={index} className="border-0 bg-background">
+                <CardContent className="flex items-start gap-4 p-6">
+                  <div className="rounded-lg bg-primary/10 p-3">
+                    <facility.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{facility.name}</h3>
+                    <p className="text-sm text-muted-foreground">{facility.description}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Rooms Section */}
+      <section id="kamar" className="py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="mb-8 text-center text-3xl font-bold">Ketersediaan Kamar</h2>
+          {rooms && rooms.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {(rooms as Room[]).map((room) => (
+                <Card key={room.id} className={room.status === "vacant" ? "border-primary/50" : ""}>
+                  <CardContent className="p-6">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">Kamar {room.room_number}</h3>
+                      <Badge variant={room.status === "vacant" ? "default" : "secondary"}>
+                        {room.status === "vacant" ? "Tersedia" : "Terisi"}
+                      </Badge>
+                    </div>
+                    <p className="text-2xl font-bold text-primary">
+                      Rp {room.price.toLocaleString("id-ID")}
+                      <span className="text-sm font-normal text-muted-foreground">/bulan</span>
+                    </p>
+                    {room.facilities && <p className="mt-2 text-sm text-muted-foreground">{room.facilities}</p>}
+                  </CardContent>
+                </Card>
               ))}
-            </SelectContent>
-          </Select>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed p-12 text-center">
+              <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+              <p className="mt-4 text-muted-foreground">Belum ada data kamar</p>
+            </div>
+          )}
         </div>
+      </section>
 
-        {selectedTenant?.room && (
-          <div className="rounded-lg bg-muted/50 p-3">
-            <p className="text-sm text-muted-foreground">Harga kamar per bulan:</p>
-            <p className="text-lg font-semibold">Rp {selectedTenant.room.price.toLocaleString("id-ID")}</p>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="amount">Nominal Pembayaran</Label>
-          <Input
-            id="amount"
-            type="number"
-            placeholder="Contoh: 1500000"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="paymentDate">Tanggal Pembayaran</Label>
-          <Input
-            id="paymentDate"
-            type="date"
-            value={paymentDate}
-            onChange={(e) => setPaymentDate(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-            required
-          />
-          <p className="text-xs text-muted-foreground">Pilih tanggal saat Anda melakukan pembayaran</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Kode QR Pembayaran</Label>
-          <div className="rounded-lg border bg-muted/50 p-4 flex flex-col items-center">
-            <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center overflow-hidden">
-              <img 
-                src="/qr-payment.jpg" 
-                alt="QR Code Pembayaran BNI" 
-                className="max-w-full max-h-full object-contain"
-                onError={(e) => {
-                  const target = e.currentTarget as HTMLImageElement;
-                  target.src = "/qr-payment.jpg";
-                  target.alt = "QR Code tidak dapat dimuat";
-                }}
+      {/* Location Section */}
+      <section className="bg-muted/30 py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="mb-8 text-center text-3xl font-bold">Lokasi</h2>
+          <div className="mx-auto max-w-4xl overflow-hidden rounded-lg">
+            <div className="aspect-video w-full bg-muted">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.521260322283!2d106.8195613!3d-6.2297465!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3e945e34b9d%3A0x5371bf0fdad786a2!2sJakarta!5e0!3m2!1sen!2sid!4v1699999999999!5m2!1sen!2sid"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Lokasi Kost"
               />
             </div>
-            <div className="mt-3 text-center">
-              <p className="text-sm font-semibold text-foreground">BNI : 0797356663</p>
-              <p className="text-xs text-muted-foreground">a.n Liestia Arfianti</p>
+            <div className="mt-4 flex items-start gap-2 text-muted-foreground">
+              <MapPin className="mt-0.5 h-5 w-5 shrink-0" />
+              <p>Jl. Contoh Alamat No. 123, Kelurahan, Kecamatan, Kota, Provinsi 12345</p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={handleDownloadQR}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Unduh QR Code
-            </Button>
           </div>
         </div>
+      </section>
 
-        <div className="space-y-2">
-          <Label htmlFor="proof">Upload Bukti Pembayaran</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="proof"
-              type="file"
-              accept="image/*,.pdf"
-              onChange={handleFileChange}
-              className="cursor-pointer"
-              required
-            />
-          </div>
-          {file && <p className="text-sm text-muted-foreground">File terpilih: {file.name}</p>}
-          <p className="text-xs text-muted-foreground">Format: JPG, PNG, WebP, atau PDF. Maksimal 5MB.</p>
+      {/* Footer */}
+      <footer className="border-t py-8">
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} KostManager. All rights reserved.</p>
         </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="notes">Catatan (Opsional)</Label>
-          <Textarea
-            id="notes"
-            placeholder="Catatan tambahan..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-          />
-        </div>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" style={{ animationDuration: '7s' }} />
-              Mengirim...
-            </>
-          ) : (
-            <>
-              <Upload className="mr-2 h-4 w-4" />
-              Kirim Bukti Pembayaran
-            </>
-          )}
-        </Button>
-      </form>
-    </>
+      </footer>
+    </div>
   )
 }
