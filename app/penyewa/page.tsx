@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Users } from "lucide-react"
 import type { TenantWithPayment } from "@/lib/types"
-import PaymentForm from "@/components/payment-form"
+import { TenantPaymentForm } from "@/components/payment-form"
 
 export default async function PenyewaPage() {
   const supabase = await createClient()
@@ -126,7 +126,7 @@ export default async function PenyewaPage() {
                 <CardTitle>Upload Bukti Pembayaran</CardTitle>
               </CardHeader>
               <CardContent>
-                <PaymentForm tenants={tenantsWithPayment} />
+                <TenantPaymentForm tenants={tenantsWithPayment} />
               </CardContent>
             </Card>
           </div>
