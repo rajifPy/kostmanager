@@ -97,22 +97,253 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Gallery Section */}
+      {/* Gallery Section with 3D Flip Cards */}
       <section className="py-16">
         <div className="container mx-auto px-4">
           <h2 className="mb-8 text-center text-3xl font-bold">Galeri Kost</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {galleryImages.map((image, index) => (
-              <div key={index} className="group relative aspect-video overflow-hidden rounded-lg">
-                <img
-                  src={image.src || "/placeholder.svg"}
-                  alt={image.alt}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                <p className="absolute bottom-3 left-3 text-sm font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
-                  {image.alt}
-                </p>
+              <div key={index} className="gallery-card-wrapper" style={{ height: '280px' }}>
+                <style jsx>{`
+                  .gallery-card {
+                    width: 100%;
+                    height: 100%;
+                    transform-style: preserve-3d;
+                    transition: transform 500ms;
+                    cursor: pointer;
+                    position: relative;
+                  }
+
+                  .gallery-card-wrapper:hover .gallery-card {
+                    transform: rotateY(180deg);
+                  }
+
+                  .card-front,
+                  .card-back {
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    backface-visibility: hidden;
+                    border-radius: 12px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                  }
+
+                  .card-front {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  }
+
+                  .card-back {
+                    transform: rotateY(180deg);
+                    background: #1a1a1a;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    color: white;
+                    position: relative;
+                  }
+
+                  .card-back::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(90deg, #ff9966, #ff5e62, #ff9966, #ff5e62);
+                    animation: rotate-gradient 4s linear infinite;
+                    z-index: -1;
+                  }
+
+                  .card-back::after {
+                    content: '';
+                    position: absolute;
+                    inset: 3px;
+                    background: #1a1a1a;
+                    border-radius: 10px;
+                    z-index: 0;
+                  }
+
+                  @keyframes rotate-gradient {
+                    0% { filter: hue-rotate(0deg); }
+                    100% { filter: hue-rotate(360deg); }
+                  }
+
+                  .card-image-container {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                  }
+
+                  .card-image {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                  }
+
+                  .floating-circles {
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    top: 0;
+                    left: 0;
+                    pointer-events: none;
+                  }
+
+                  .circle {
+                    position: absolute;
+                    border-radius: 50%;
+                    filter: blur(40px);
+                    animation: float 3s ease-in-out infinite;
+                    opacity: 0.6;
+                  }
+
+                  .circle-1 {
+                    width: 120px;
+                    height: 120px;
+                    background: rgba(255, 187, 102, 0.8);
+                    top: 20%;
+                    left: 10%;
+                    animation-delay: 0s;
+                  }
+
+                  .circle-2 {
+                    width: 180px;
+                    height: 180px;
+                    background: rgba(255, 136, 102, 0.8);
+                    bottom: 10%;
+                    left: 30%;
+                    animation-delay: -1s;
+                  }
+
+                  .circle-3 {
+                    width: 90px;
+                    height: 90px;
+                    background: rgba(255, 34, 51, 0.8);
+                    top: 15%;
+                    right: 15%;
+                    animation-delay: -2s;
+                  }
+
+                  @keyframes float {
+                    0%, 100% { transform: translateY(0px); }
+                    50% { transform: translateY(20px); }
+                  }
+
+                  .card-overlay {
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+                    padding: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                  }
+
+                  .icon-container {
+                    background: rgba(255, 255, 255, 0.2);
+                    backdrop-filter: blur(10px);
+                    padding: 12px;
+                    border-radius: 10px;
+                  }
+
+                  .icon {
+                    width: 32px;
+                    height: 32px;
+                    color: white;
+                  }
+
+                  .card-title {
+                    color: white;
+                    font-size: 18px;
+                    font-weight: 600;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                  }
+
+                  .back-content {
+                    position: relative;
+                    z-index: 1;
+                    text-align: center;
+                    padding: 30px;
+                  }
+
+                  .back-icon {
+                    width: 60px;
+                    height: 60px;
+                    color: white;
+                    margin-bottom: 20px;
+                  }
+
+                  .back-title {
+                    font-size: 22px;
+                    font-weight: 700;
+                    margin-bottom: 10px;
+                    color: white;
+                  }
+
+                  .back-description {
+                    font-size: 14px;
+                    color: rgba(255, 255, 255, 0.8);
+                    line-height: 1.6;
+                  }
+                `}</style>
+
+                <div className="gallery-card">
+                  {/* Front Side */}
+                  <div className="card-front">
+                    <div className="card-image-container">
+                      <img 
+                        src={image.src || "/placeholder.svg"}
+                        alt={image.alt}
+                        className="card-image"
+                      />
+                      <div className="floating-circles">
+                        <div className="circle circle-1"></div>
+                        <div className="circle circle-2"></div>
+                        <div className="circle circle-3"></div>
+                      </div>
+                      <div className="card-overlay">
+                        <div className="icon-container">
+                          <svg 
+                            className="icon"
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          >
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                          </svg>
+                        </div>
+                        <div className="card-title">{image.alt}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Back Side */}
+                  <div className="card-back">
+                    <div className="back-content">
+                      <svg 
+                        className="back-icon"
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      <div className="back-title">Fasilitas Lengkap</div>
+                      <div className="back-description">
+                        Fasilitas modern dan nyaman untuk hunian Anda dengan kualitas terbaik
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
