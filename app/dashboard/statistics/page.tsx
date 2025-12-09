@@ -1,3 +1,4 @@
+
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/dashboard/header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -14,6 +15,7 @@ import {
   Building2
 } from "lucide-react"
 import type { Payment, Tenant, Room } from "@/lib/types"
+import { ExportPDFButton } from "@/components/statistics/export-pdf-button"
 
 async function getStatisticsData() {
   const supabase = await createClient()
@@ -138,6 +140,31 @@ export default async function StatisticsPage() {
     <>
       <Header title="Statistik & Analisis" />
       <main className="flex-1 overflow-y-auto p-6">
+        import { ExportPDFButton } from "@/components/statistics/export-pdf-button"
+
+// Di dalam component, setelah Header:
+<Header title="Statistik & Analisis" />
+<main className="flex-1 overflow-y-auto p-6">
+  <div className="mb-6 flex items-center justify-between">
+    <div>
+      <h2 className="text-lg font-semibold">Laporan Statistik</h2>
+      <p className="text-sm text-muted-foreground">Analisis performa bisnis kost Anda</p>
+    </div>
+    <ExportPDFButton 
+      monthlyData={stats.monthlyData}
+      statusBreakdown={stats.statusBreakdown}
+      occupancyRate={stats.occupancyRate}
+      avgPayment={stats.avgPayment}
+      revenueChange={stats.revenueChange}
+      topTenants={stats.topTenants}
+      totalRevenue={stats.totalRevenue}
+      totalPayments={stats.totalPayments}
+      activeTenantsCount={stats.activeTenantsCount}
+      totalRooms={stats.totalRooms}
+    />
+  </div>
+  {/* Rest of the content */}
+</main>
         {/* Key Metrics */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card>
@@ -369,4 +396,5 @@ export default async function StatisticsPage() {
       </main>
     </>
   )
+
 }
