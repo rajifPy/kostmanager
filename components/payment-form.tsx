@@ -23,7 +23,7 @@ const TypewriterLoader = () => {
           --paper: #EEF0FD;
           --text: #D3D4EC;
           --tool: #FBC56C;
-          --duration: 3s;
+          --duration: 5s;
           position: relative;
           animation: bounce05 var(--duration) linear infinite;
         }
