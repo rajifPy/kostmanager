@@ -138,10 +138,6 @@ export default async function StatisticsPage() {
 
   return (
     <>
-      <Header title="Statistik & Analisis" />
-      <main className="flex-1 overflow-y-auto p-6">
-// Di dalam component, setelah Header:
-<Header title="Statistik & Analisis" />
 <main className="flex-1 overflow-y-auto p-6">
   <div className="mb-6 flex items-center justify-between">
     <div>
@@ -396,5 +392,6 @@ export default async function StatisticsPage() {
   )
 
 }
+
 
 
