@@ -1,12 +1,12 @@
 import { createClient } from "@/lib/supabase/server"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, MapPin, Wifi, Car, UtensilsCrossed, Shield, Droplets, Zap, Users } from "lucide-react"
 import type { Room } from "@/lib/types"
 import { GalleryCard } from "@/components/gallery/gallery-card"
-import { ThemeToggle } from '@/components/theme-toggle'
+import { HomeHeader } from '@/components/home-header'
+import Link from "next/link"
 
 const facilities = [
   { icon: Wifi, name: "WiFi Gratis", description: "Internet cepat 24 jam" },
@@ -36,26 +36,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 text-primary">
-            <Building2 className="h-6 w-6" />
-            <span className="text-xl font-bold">KostManager</span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <ThemeToggle />
-            <Link href="/penyewa" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Daftar Penyewa
-            </Link>
-            <Link href="/auth/login">
-              <Button variant="outline" size="sm">
-                Admin Login
-              </Button>
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <HomeHeader />
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-b from-primary/5 to-background py-20">
@@ -75,11 +56,11 @@ export default async function HomePage() {
             <Link href="/penyewa">
               <Button size="lg">Lihat Daftar Penyewa</Button>
             </Link>
-            <Link href="#kamar">
+            <a href="#kamar">
               <Button size="lg" variant="outline">
                 Cek Ketersediaan
               </Button>
-            </Link>
+            </a>
           </div>
 
           {/* Stats */}
