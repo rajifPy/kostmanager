@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createTenant, updateTenant } from "@/app/actions/tenants"
 import type { Tenant, Room } from "@/lib/types"
+import { Copy, RefreshCw } from "lucide-react"
 
 interface TenantFormProps {
   tenant?: Tenant
@@ -18,13 +18,27 @@ interface TenantFormProps {
   onSuccess?: () => void
 }
 
+// Function to generate unique code (client-side preview)
+function generateUniqueCode(): string {
+  return Math.random().toString(36).substring(2, 10).toUpperCase()
+}
+
 export function TenantForm({ tenant, availableRooms, currentRoom, onSuccess }: TenantFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uniqueCode, setUniqueCode] = useState(tenant?.unique_code || generateUniqueCode())
 
   // Include current room in available rooms for editing
   const rooms = currentRoom ? [currentRoom, ...availableRooms.filter((r) => r.id !== currentRoom.id)] : availableRooms
+
+  const handleGenerateCode = () => {
+    setUniqueCode(generateUniqueCode())
+  }
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(uniqueCode)
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -32,6 +46,7 @@ export function TenantForm({ tenant, availableRooms, currentRoom, onSuccess }: T
     setError(null)
 
     const formData = new FormData(e.currentTarget)
+    formData.set('unique_code', uniqueCode)
 
     try {
       if (tenant) {
@@ -54,10 +69,48 @@ export function TenantForm({ tenant, availableRooms, currentRoom, onSuccess }: T
         <Label htmlFor="name">Nama Lengkap</Label>
         <Input id="name" name="name" placeholder="Nama penyewa" defaultValue={tenant?.name} required />
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="unique_code">Kode Unik Penyewa</Label>
+        <div className="flex gap-2">
+          <Input 
+            id="unique_code" 
+            name="unique_code" 
+            value={uniqueCode}
+            readOnly
+            className="font-mono font-bold text-primary"
+          />
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="icon"
+            onClick={handleCopyCode}
+            title="Salin Kode"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          {!tenant && (
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="icon"
+              onClick={handleGenerateCode}
+              title="Generate Ulang"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {tenant ? "Kode unik tidak dapat diubah" : "Kode ini akan digunakan penyewa untuk upload bukti pembayaran"}
+        </p>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="phone">Nomor Telepon</Label>
         <Input id="phone" name="phone" placeholder="08xxxxxxxxxx" defaultValue={tenant?.phone || ""} />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -68,6 +121,7 @@ export function TenantForm({ tenant, availableRooms, currentRoom, onSuccess }: T
           defaultValue={tenant?.email || ""}
         />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="room_id">Kamar</Label>
         <Select name="room_id" defaultValue={tenant?.room_id || "none"}>
@@ -84,6 +138,7 @@ export function TenantForm({ tenant, availableRooms, currentRoom, onSuccess }: T
           </SelectContent>
         </Select>
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="start_date">Tanggal Masuk</Label>
         <Input
@@ -94,11 +149,14 @@ export function TenantForm({ tenant, availableRooms, currentRoom, onSuccess }: T
           required
         />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="end_date">Tanggal Keluar (Opsional)</Label>
         <Input id="end_date" name="end_date" type="date" defaultValue={tenant?.end_date?.split("T")[0] || ""} />
       </div>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
+
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Menyimpan..." : tenant ? "Update Penyewa" : "Tambah Penyewa"}
       </Button>
