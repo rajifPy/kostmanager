@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { TrendingUp } from "lucide-react"
+import { ThemeToggle } from '@/components/theme-toggle'
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -55,6 +56,9 @@ export function Sidebar() {
         })}
       </nav>
       <div className="border-t p-4">
+        <div className="flex justify-center">
+          <ThemeToggle />
+        </div>
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
