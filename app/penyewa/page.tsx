@@ -219,7 +219,7 @@ export default async function PenyewaPage() {
       {/* Footer */}
       <footer className="mt-auto border-t py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} KostManager. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} KostManager. By Cah Kuno - Murfhi</p>
         </div>
       </footer>
     </div>
