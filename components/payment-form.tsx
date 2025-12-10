@@ -12,8 +12,9 @@ import { Upload, CheckCircle2, Download, Loader2 } from "lucide-react"
 import type { TenantWithPayment } from "@/lib/types"
 
 // Sound effect for success
-const playSuccessSound = () => {
+const playTypewriterSound = () => {
   const audio = new Audio("/sound-effect-payment.mp3");
+  audio.volume = 0.5; // Set volume to 50%
   audio.play().catch(e => console.log("Audio play failed:", e));
 };
 
