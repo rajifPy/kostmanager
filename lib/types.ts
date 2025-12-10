@@ -14,6 +14,7 @@ export interface Tenant {
   phone: string | null
   email: string | null
   room_id: string | null
+  unique_code: string // Added unique code
   start_date: string
   end_date: string | null
   created_at: string
@@ -62,4 +63,5 @@ export interface DashboardStats {
 export interface TenantWithPayment extends Tenant {
   payments?: Payment[]
   latestPayment?: Payment
+  hasUnpaidPayment?: boolean // Flag for active display
 }
