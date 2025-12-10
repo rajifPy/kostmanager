@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Building2, Menu, X, ChevronDown } from "lucide-react"
+import { Building2, Menu, X, ChevronDown, MessageCircle } from "lucide-react"
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -12,9 +12,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+// Konfigurasi WhatsApp Admin
+const ADMIN_WHATSAPP = "6281234567890" // Ganti dengan nomor admin (format: 62xxx)
+const ADMIN_MESSAGE = "Halo Admin KostManager, saya ingin bertanya tentang kost"
 
 export function HomeHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const handleWhatsAppClick = () => {
+    const message = encodeURIComponent(ADMIN_MESSAGE)
+    const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${message}`
+    window.open(whatsappUrl, '_blank')
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -28,6 +44,26 @@ export function HomeHeader() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-4">
           <ThemeToggle />
+          
+          {/* WhatsApp Kontak Admin */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleWhatsAppClick}
+                  className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  <span className="sr-only">Hubungi Admin via WhatsApp</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Hubungi Admin via WhatsApp</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
           {/* Form Pembayaran Sewa Link */}
           <Link 
@@ -94,6 +130,21 @@ export function HomeHeader() {
         )}
       >
         <nav className="container mx-auto flex flex-col gap-2 px-4 py-4">
+          {/* WhatsApp Kontak Admin - Mobile */}
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+            onClick={() => {
+              handleWhatsAppClick()
+              setMobileMenuOpen(false)
+            }}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Hubungi Admin via WhatsApp
+          </Button>
+
+          <div className="border-t pt-2 mt-2"></div>
+          
           {/* Form Pembayaran Sewa */}
           <Link 
             href="/penyewa" 
