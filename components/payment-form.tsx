@@ -1,34 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Confetti from 'react-confetti';
-
-// Sound effect URLs (gunakan path sesuai project Anda)
-const SOUND_EFFECTS = {
-  start: 'https://assets.mixkit.co/sfx/preview/mixkit-typewriter-loop-1121.mp3',
-  stop: 'https://assets.mixkit.co/sfx/preview/mixkit-completion-of-a-level-2063.mp3',
-  success: 'https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'
-};
 
 // Typewriter Loading Component
-const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
+const TypewriterLoader = () => {
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'resetting'>('idle');
   const [progress, setProgress] = useState(0);
-  const [isRunning, setIsRunning] = useState(isActive);
-  const [isUploading, setIsUploading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [timer, setTimer] = useState(15);
+  const [file, setFile] = useState<File | null>(null);
+  const [note, setNote] = useState('');
   
-  const startAudioRef = useRef(null);
-  const stopAudioRef = useRef(null);
-  const successAudioRef = useRef(null);
+  const startSoundRef = useRef<HTMLAudioElement>(null);
+  const stopSoundRef = useRef<HTMLAudioElement>(null);
+  const successSoundRef = useRef<HTMLAudioElement>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout>();
 
+  // Initialize audio elements
   useEffect(() => {
-    // Inisialisasi audio elements
-    startAudioRef.current = new Audio(SOUND_EFFECTS.start);
-    stopAudioRef.current = new Audio(SOUND_EFFECTS.stop);
-    successAudioRef.current = new Audio(SOUND_EFFECTS.success);
+    // Sound effect URLs
+    const startSound = 'https://assets.mixkit.co/sfx/preview/mixkit-typewriter-loop-1121.mp3';
+    const stopSound = 'https://assets.mixkit.co/sfx/preview/mixkit-completion-of-a-level-2063.mp3';
+    const successSound = 'https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3';
     
-    startAudioRef.current.loop = true;
+    startSoundRef.current = new Audio(startSound);
+    stopSoundRef.current = new Audio(stopSound);
+    successSoundRef.current = new Audio(successSound);
     
+    if (startSoundRef.current) {
+      startSoundRef.current.loop = true;
+    }
+
     return () => {
-      // Cleanup audio
-      [startAudioRef, stopAudioRef, successAudioRef].forEach(ref => {
+      clearInterval(progressIntervalRef.current);
+      [startSoundRef, stopSoundRef, successSoundRef].forEach(ref => {
         if (ref.current) {
           ref.current.pause();
           ref.current = null;
@@ -37,77 +40,96 @@ const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!isRunning || !isUploading) return;
-
-    let interval;
-    const startTime = Date.now();
-    const endTime = startTime + duration * 1000;
-
-    // Play start sound
-    if (startAudioRef.current) {
-      startAudioRef.current.play().catch(e => console.log("Audio play failed:", e));
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
     }
-
-    // Update progress setiap 100ms
-    interval = setInterval(() => {
-      const currentTime = Date.now();
-      const elapsed = currentTime - startTime;
-      const remaining = endTime - currentTime;
-      const newProgress = (elapsed / (duration * 1000)) * 100;
-
-      setProgress(newProgress);
-
-      // Jika selesai
-      if (remaining <= 0) {
-        clearInterval(interval);
-        setIsRunning(false);
-        setIsUploading(false);
-        
-        // Stop start sound
-        if (startAudioRef.current) {
-          startAudioRef.current.pause();
-          startAudioRef.current.currentTime = 0;
-        }
-        
-        // Play stop sound
-        if (stopAudioRef.current) {
-          stopAudioRef.current.play();
-        }
-        
-        if (onComplete) onComplete();
-      }
-    }, 100);
-
-    return () => {
-      clearInterval(interval);
-      if (startAudioRef.current) {
-        startAudioRef.current.pause();
-        startAudioRef.current.currentTime = 0;
-      }
-    };
-  }, [isRunning, isUploading, duration, onComplete]);
-
-  const handleStartUpload = () => {
-    setIsRunning(true);
-    setIsUploading(true);
-    setProgress(0);
   };
 
-  const handleCancelUpload = () => {
-    setIsRunning(false);
-    setIsUploading(false);
-    if (startAudioRef.current) {
-      startAudioRef.current.pause();
-      startAudioRef.current.currentTime = 0;
+  const handleSubmit = async () => {
+    if (!file && status !== 'success') {
+      alert('Pilih file terlebih dahulu!');
+      return;
+    }
+
+    // Step 1: User klik "Kirim Bukti Pembayaran"
+    setStatus('uploading');
+    setProgress(0);
+    setTimer(15);
+    
+    // Step 2: Sound effect MULAI diputar
+    if (startSoundRef.current) {
+      try {
+        await startSoundRef.current.play();
+      } catch (err) {
+        console.log('Audio autoplay prevented:', err);
+      }
+    }
+
+    // Step 3: Animasi typewriter loading (15 detik)
+    let elapsed = 0;
+    progressIntervalRef.current = setInterval(() => {
+      elapsed += 0.1;
+      const newProgress = (elapsed / 15) * 100;
+      setProgress(newProgress);
+      setTimer(15 - Math.floor(elapsed));
+
+      if (elapsed >= 15) {
+        clearInterval(progressIntervalRef.current);
+        
+        // Step 4: Upload selesai → Sound STOP
+        if (startSoundRef.current) {
+          startSoundRef.current.pause();
+          startSoundRef.current.currentTime = 0;
+        }
+        
+        if (stopSoundRef.current) {
+          stopSoundRef.current.play();
+        }
+        
+        // Step 5: Animasi sukses muncul
+        setStatus('success');
+        setShowSuccess(true);
+        
+        // Play success sound
+        setTimeout(() => {
+          if (successSoundRef.current) {
+            successSoundRef.current.play();
+          }
+        }, 500);
+        
+        // Step 6: Form reset otomatis (5 detik)
+        setTimeout(() => {
+          setStatus('resetting');
+          setTimeout(() => {
+            setFile(null);
+            setNote('');
+            setProgress(0);
+            setShowSuccess(false);
+            setStatus('idle');
+          }, 1000);
+        }, 5000);
+      }
+    }, 100);
+  };
+
+  const handleCancel = () => {
+    clearInterval(progressIntervalRef.current);
+    setStatus('idle');
+    setProgress(0);
+    
+    if (startSoundRef.current) {
+      startSoundRef.current.pause();
+      startSoundRef.current.currentTime = 0;
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4 md:p-8">
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
         
+        /* Typewriter Animation */
         .typewriter {
           --blue: #5C86FF;
           --blue-dark: #275EFE;
@@ -115,9 +137,12 @@ const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
           --paper: #EEF0FD;
           --text: #D3D4EC;
           --tool: #FBC56C;
-          --duration: 15s;
+          --duration: 1s;
           position: relative;
-          animation: bounce05 var(--duration) linear infinite;
+          width: 180px;
+          height: 120px;
+          margin: 0 auto;
+          animation: ${status === 'uploading' ? 'bounce05 var(--duration) linear infinite' : 'none'};
         }
 
         .typewriter:before {
@@ -172,6 +197,8 @@ const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
           left: 50%;
           transform: translateX(-50%);
           box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.15);
+          opacity: ${status === 'uploading' ? 1 : 0.6};
+          transition: opacity 0.3s;
         }
 
         .typewriter .paper:before {
@@ -187,11 +214,12 @@ const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
         .typewriter .paper .lines {
           width: 100%;
           height: 100%;
-          opacity: 0;
+          opacity: ${status === 'uploading' ? 1 : 0};
           position: absolute;
           top: 0;
           left: 0;
-          animation: lines05 var(--duration) linear infinite;
+          animation: ${status === 'uploading' ? 'lines05 3s linear infinite' : 'none'};
+          transition: opacity 0.3s;
         }
 
         .typewriter .paper .lines:before,
@@ -245,8 +273,9 @@ const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
           width: 100%;
           height: 100%;
           padding: 0 42px;
-          opacity: 0;
-          animation: text05 var(--duration) linear infinite;
+          opacity: ${status === 'uploading' ? 1 : 0};
+          animation: ${status === 'uploading' ? 'text05 3s linear infinite' : 'none'};
+          transition: opacity 0.3s;
         }
 
         .typewriter .paper .text p {
@@ -262,6 +291,8 @@ const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
           top: 82px;
           left: 50%;
           transform: translateX(-50%);
+          opacity: ${status === 'uploading' ? 1 : 0.6};
+          transition: opacity 0.3s;
         }
 
         .typewriter .keyboard:before {
@@ -284,430 +315,430 @@ const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
           top: 8px;
         }
 
-        .typewriter .keyboard .key:nth-child(1) {
-          left: 14px;
+        .typewriter .keyboard .key:nth-child(1) { left: 14px; }
+        .typewriter .keyboard .key:nth-child(2) { left: 32px; }
+        .typewriter .keyboard .key:nth-child(3) { 
+          left: 50px; 
+          animation: ${status === 'uploading' ? 'key05_1 1s linear infinite' : 'none'};
+        }
+        .typewriter .keyboard .key:nth-child(4) { left: 68px; }
+        .typewriter .keyboard .key:nth-child(5) { 
+          left: 86px; 
+          animation: ${status === 'uploading' ? 'key05_2 1.5s linear infinite' : 'none'};
+        }
+        .typewriter .keyboard .key:nth-child(6) { left: 104px; }
+        .typewriter .keyboard .key:nth-child(7) { 
+          left: 122px; 
+          animation: ${status === 'uploading' ? 'key05_3 2s linear infinite' : 'none'};
         }
 
-        .typewriter .keyboard .key:nth-child(2) {
-          left: 32px;
-        }
-
-        .typewriter .keyboard .key:nth-child(3) {
-          left: 50px;
-          animation: key05_1 var(--duration) linear infinite;
-        }
-
-        .typewriter .keyboard .key:nth-child(4) {
-          left: 68px;
-        }
-
-        .typewriter .keyboard .key:nth-child(5) {
-          left: 86px;
-          animation: key05_2 var(--duration) linear infinite;
-        }
-
-        .typewriter .keyboard .key:nth-child(6) {
-          left: 104px;
-        }
-
-        .typewriter .keyboard .key:nth-child(7) {
-          left: 122px;
-          animation: key05_3 var(--duration) linear infinite;
-        }
-
+        /* Animations */
         @keyframes bounce05 {
-          75% {
-            transform: translateY(0);
-          }
-
-          80% {
-            transform: translateY(-4px);
-          }
-
-          90% {
-            transform: translateY(2px);
-          }
-
-          95% {
-            transform: translateY(-2px);
-          }
-
-          100% {
-            transform: translateY(0);
-          }
+          75% { transform: translateY(0); }
+          80% { transform: translateY(-4px); }
+          90% { transform: translateY(2px); }
+          95% { transform: translateY(-2px); }
+          100% { transform: translateY(0); }
         }
 
         @keyframes lines05 {
-          0%, 20% {
-            opacity: 0;
-          }
-
-          25% {
-            opacity: 1;
-          }
-
-          100% {
-            opacity: 1;
-          }
+          0%, 20% { opacity: 0; }
+          25% { opacity: 1; }
+          100% { opacity: 1; }
         }
 
         @keyframes text05 {
-          0%, 20% {
-            opacity: 0;
-          }
-
-          25% {
-            opacity: 1;
-          }
-
-          95% {
-            opacity: 1;
-          }
-
-          100% {
-            opacity: 0;
-          }
+          0%, 20% { opacity: 0; }
+          25% { opacity: 1; }
+          95% { opacity: 1; }
+          100% { opacity: 0; }
         }
 
         @keyframes key05_1 {
-          0%, 5% {
-            transform: translateY(0);
-          }
-
-          10% {
-            transform: translateY(4px);
-          }
-
-          15%, 100% {
-            transform: translateY(0);
-          }
+          0%, 5% { transform: translateY(0); }
+          10% { transform: translateY(4px); }
+          15%, 100% { transform: translateY(0); }
         }
 
         @keyframes key05_2 {
-          0%, 25% {
-            transform: translateY(0);
-          }
-
-          30% {
-            transform: translateY(4px);
-          }
-
-          35%, 100% {
-            transform: translateY(0);
-          }
+          0%, 25% { transform: translateY(0); }
+          30% { transform: translateY(4px); }
+          35%, 100% { transform: translateY(0); }
         }
 
         @keyframes key05_3 {
-          0%, 45% {
-            transform: translateY(0);
-          }
-
-          50% {
-            transform: translateY(4px);
-          }
-
-          55%, 100% {
-            transform: translateY(0);
-          }
+          0%, 45% { transform: translateY(0); }
+          50% { transform: translateY(4px); }
+          55%, 100% { transform: translateY(0); }
         }
 
-        .progress-bar {
+        /* Confetti Animation */
+        @keyframes confetti-fall {
+          0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(1000px) rotate(720deg); opacity: 0; }
+        }
+
+        .confetti {
+          position: fixed;
+          width: 15px;
+          height: 15px;
+          background: #ff0000;
+          top: -20px;
+          opacity: 0;
+        }
+
+        /* Progress Bar */
+        .progress-container {
           width: 100%;
+          max-width: 400px;
           height: 8px;
           background: #e5e7eb;
           border-radius: 4px;
-          margin-top: 30px;
+          margin: 20px auto;
           overflow: hidden;
         }
 
-        .progress-fill {
+        .progress-bar {
           height: 100%;
           background: linear-gradient(90deg, #5C86FF, #275EFE);
           border-radius: 4px;
-          transition: width 0.1s linear;
+          transition: width 0.3s ease;
+          width: ${progress}%;
         }
 
-        .upload-button {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          padding: 12px 24px;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          border: none;
-          margin-top: 20px;
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        /* Success Animation */
+        .success-checkmark {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto;
         }
 
-        .upload-button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        .check-icon {
+          width: 80px;
+          height: 80px;
+          position: relative;
+          border-radius: 50%;
+          box-sizing: content-box;
+          border: 4px solid #10B981;
         }
 
-        .upload-button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          transform: none;
+        .check-icon::before {
+          top: 3px;
+          left: -2px;
+          width: 30px;
+          transform-origin: 100% 50%;
+          border-radius: 100px 0 0 100px;
         }
 
-        .cancel-button {
-          background: #ef4444;
-          color: white;
-          padding: 8px 16px;
-          border-radius: 6px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          border: none;
-          margin-top: 12px;
+        .check-icon::after {
+          top: 0;
+          left: 30px;
+          width: 60px;
+          transform-origin: 0 50%;
+          border-radius: 0 100px 100px 0;
+          animation: rotate-circle 4.25s ease-in;
         }
 
-        .cancel-button:hover {
-          background: #dc2626;
+        .check-icon .icon-line {
+          height: 5px;
+          background-color: #10B981;
+          display: block;
+          border-radius: 2px;
+          position: absolute;
+          z-index: 10;
         }
 
-        .success-message {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          padding: 20px;
-          border-radius: 12px;
-          font-weight: 600;
-          margin-top: 30px;
-          text-align: center;
-          animation: fadeIn 0.5s ease;
-          box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        .check-icon .icon-line.line-tip {
+          top: 46px;
+          left: 14px;
+          width: 25px;
+          transform: rotate(45deg);
+          animation: icon-line-tip 0.75s;
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+        .check-icon .icon-line.line-long {
+          top: 38px;
+          right: 8px;
+          width: 47px;
+          transform: rotate(-45deg);
+          animation: icon-line-long 0.75s;
         }
 
-        .status-text {
-          font-family: 'Space Mono', monospace;
-          margin-top: 15px;
-          color: #4b5563;
-          font-size: 14px;
-          text-align: center;
+        @keyframes rotate-circle {
+          0% { transform: rotate(-45deg); }
+          5% { transform: rotate(-45deg); }
+          12% { transform: rotate(-405deg); }
+          100% { transform: rotate(-405deg); }
         }
 
-        .timer {
-          font-family: 'Space Mono', monospace;
-          font-size: 24px;
-          font-weight: bold;
-          color: #275EFE;
-          margin-top: 15px;
-          background: #f3f4f6;
-          padding: 8px 16px;
-          border-radius: 8px;
+        @keyframes icon-line-tip {
+          0% { width: 0; left: 1px; top: 19px; }
+          54% { width: 0; left: 1px; top: 19px; }
+          70% { width: 50px; left: -8px; top: 37px; }
+          84% { width: 17px; left: 21px; top: 48px; }
+          100% { width: 25px; left: 14px; top: 45px; }
+        }
+
+        @keyframes icon-line-long {
+          0% { width: 0; right: 46px; top: 54px; }
+          65% { width: 0; right: 46px; top: 54px; }
+          84% { width: 55px; right: 0px; top: 35px; }
+          100% { width: 47px; right: 8px; top: 38px; }
+        }
+
+        /* Reset Animation */
+        .reset-animation {
+          animation: resetScale 1s ease;
+        }
+
+        @keyframes resetScale {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(0.8); opacity: 0.5; }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}} />
 
-      {/* Upload Form */}
-      <div className="mb-8 p-6 bg-white rounded-xl shadow-lg max-w-md w-full">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Kirim Bukti Pembayaran</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload File
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <div className="text-gray-500">
-                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                <p className="mt-2">Drag & drop file di sini</p>
-                <p className="text-sm">atau</p>
-              </div>
-              <button 
-                className="mt-4 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg font-medium hover:bg-blue-200 transition"
-                onClick={() => document.getElementById('fileInput')?.click()}
-              >
-                Pilih File
-              </button>
-              <input 
-                id="fileInput"
-                type="file" 
-                className="hidden"
-                accept=".jpg,.jpeg,.png,.pdf"
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Catatan (Opsional)
-            </label>
-            <textarea 
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows={3}
-              placeholder="Tambahkan catatan jika perlu..."
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Typewriter Animation */}
-      <div className="relative">
-        {isUploading && (
-          <div className="timer">
-            {Math.max(0, duration - Math.floor(progress * duration / 100))}s
-          </div>
-        )}
-        
-        <div className={`typewriter ${isUploading ? '' : 'opacity-50'}`}>
-          <div className="slide"></div>
-          <div className="paper">
-            <div className="lines">
-              <div></div>
-              <div></div>
-              <div></div>
-            </div>
-            <div className="text">
-              <p>Upload in progress...</p>
-              <p>Please wait patiently</p>
-              <p>Do not close this window</p>
-            </div>
-          </div>
-          <div className="keyboard">
-            <div className="key"></div>
-            <div className="key"></div>
-            <div className="key"></div>
-            <div className="key"></div>
-            <div className="key"></div>
-            <div className="key"></div>
-            <div className="key"></div>
-          </div>
-        </div>
-        
-        {isUploading && (
-          <div className="progress-bar">
-            <div 
-              className="progress-fill"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
-        
-        <div className="status-text">
-          {isUploading 
-            ? `Mengunggah... ${progress.toFixed(1)}%`
-            : isRunning 
-              ? 'Menyiapkan upload...'
-              : 'Siap mengunggah file'
-          }
-        </div>
-      </div>
-
-      {/* Control Buttons */}
-      <div className="flex flex-col items-center space-y-3 mt-6">
-        {!isUploading ? (
-          <button 
-            className="upload-button"
-            onClick={handleStartUpload}
-            disabled={isRunning}
-          >
-            {isRunning ? 'Memulai...' : 'Kirim Bukti Pembayaran'}
-          </button>
-        ) : (
-          <button 
-            className="cancel-button"
-            onClick={handleCancelUpload}
-          >
-            Batalkan Upload
-          </button>
-        )}
-      </div>
-
-      {/* Success Message (akan muncul dari parent) */}
-    </div>
-  );
-};
-
-// Main Component yang mengatur alur lengkap
-const UploadPaymentProof = () => {
-  const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle', 'uploading', 'success', 'reset'
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const successAudioRef = useRef(null);
-
-  useEffect(() => {
-    // Inisialisasi audio sukses
-    successAudioRef.current = new Audio(SOUND_EFFECTS.success);
-  }, []);
-
-  const handleUploadComplete = () => {
-    // Step 4: Upload selesai → Sound STOP (sudah di TypewriterLoader)
-    // Step 5: Animasi sukses dengan confetti
-    setUploadStatus('success');
-    setShowConfetti(true);
-    setShowSuccess(true);
-    
-    // Play success sound
-    if (successAudioRef.current) {
-      successAudioRef.current.play();
-    }
-    
-    // Step 6: Form reset otomatis setelah 5 detik
-    setTimeout(() => {
-      setShowConfetti(false);
-      setShowSuccess(false);
-      setUploadStatus('idle');
-      // Reset form bisa ditambahkan di sini
-    }, 5000);
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col items-center justify-center p-4">
-      {showConfetti && (
-        <Confetti
-          width={window.innerWidth}
-          height={window.innerHeight}
-          recycle={false}
-          numberOfPieces={200}
-          gravity={0.1}
-        />
-      )}
-      
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Pembayaran Online</h1>
-      <p className="text-gray-600 mb-8">Upload bukti pembayaran Anda dengan aman</p>
-      
-      <TypewriterLoader 
-        duration={15}
-        onComplete={handleUploadComplete}
-        isActive={uploadStatus === 'uploading'}
-      />
-      
+      {/* Confetti Effect */}
       {showSuccess && (
-        <div className="success-message animate-fadeIn">
-          <div className="flex items-center justify-center mb-2">
-            <svg className="w-8 h-8 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            <span className="text-xl">Upload Berhasil!</span>
-          </div>
-          <p>Bukti pembayaran telah diterima. Form akan reset dalam 5 detik...</p>
+        <div className="fixed inset-0 pointer-events-none z-50">
+          {Array.from({ length: 150 }).map((_, i) => (
+            <div
+              key={i}
+              className="confetti absolute"
+              style={{
+                left: `${Math.random() * 100}vw`,
+                background: `hsl(${Math.random() * 360}, 100%, 60%)`,
+                animation: `confetti-fall ${2 + Math.random() * 3}s linear forwards`,
+                animationDelay: `${Math.random() * 2}s`,
+                width: `${10 + Math.random() * 10}px`,
+                height: `${10 + Math.random() * 10}px`,
+                borderRadius: Math.random() > 0.5 ? '50%' : '0',
+              }}
+            />
+          ))}
         </div>
       )}
-      
-      {/* Status Indicator */}
-      <div className="mt-8 flex items-center space-x-6">
-        <div className="flex flex-col items-center">
-          <div className={`w-3 h-3 rounded-full ${uploadStatus !== 'idle' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-          <span className="text-sm mt-1 text-gray-600">Upload</span>
+
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+            Kirim Bukti Pembayaran
+          </h1>
+          <p className="text-gray-600">
+            Upload bukti pembayaran untuk memproses transaksi Anda
+          </p>
         </div>
-        <div className="flex flex-col items-center">
-          <div className={`w-3 h-3 rounded-full ${uploadStatus === 'success' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-          <span className="text-sm mt-1 text-gray-600">Verifikasi</span>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Upload Form */}
+          <div className={`bg-white rounded-2xl shadow-xl p-6 transition-all duration-300 ${
+            status === 'resetting' ? 'reset-animation' : ''
+          }`}>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Form Upload</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  File Bukti Pembayaran
+                </label>
+                <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                  file ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-blue-500'
+                }`}>
+                  {file ? (
+                    <div className="flex items-center justify-center space-x-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-gray-800 truncate">{file.name}</p>
+                        <p className="text-sm text-gray-500">{(file.size / 1024).toFixed(2)} KB</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="text-gray-600 mb-2">Format: JPG, PNG, PDF (max 5MB)</p>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    id="file-upload"
+                    className="hidden"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={handleFileChange}
+                    disabled={status === 'uploading' || status === 'success'}
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className={`inline-block px-4 py-2 rounded-lg font-medium cursor-pointer transition-colors ${
+                      status === 'uploading' || status === 'success'
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                    }`}
+                  >
+                    {file ? 'Ganti File' : 'Pilih File'}
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Catatan (Opsional)
+                </label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  rows={3}
+                  placeholder="Tambahkan catatan jika perlu..."
+                  disabled={status === 'uploading' || status === 'success'}
+                />
+              </div>
+
+              <div className="pt-4">
+                {status === 'idle' ? (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!file}
+                    className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
+                      file
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90 active:scale-95'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {file ? '📤 Kirim Bukti Pembayaran' : 'Pilih file terlebih dahulu'}
+                  </button>
+                ) : status === 'uploading' ? (
+                  <button
+                    onClick={handleCancel}
+                    className="w-full py-4 bg-red-500 text-white rounded-xl font-semibold text-lg hover:bg-red-600 active:scale-95 transition-all"
+                  >
+                    ⏹️ Batalkan Upload ({timer}s)
+                  </button>
+                ) : status === 'success' ? (
+                  <div className="text-center py-4">
+                    <div className="text-green-600 font-semibold">
+                      ✅ Upload Berhasil!
+                    </div>
+                    <p className="text-gray-600 text-sm mt-1">
+                      Form akan reset dalam {status === 'success' ? '5' : '0'} detik...
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* Status & Animation */}
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Status Upload</h2>
+            
+            {/* Typewriter Animation */}
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="typewriter mb-6">
+                <div className="slide"></div>
+                <div className="paper">
+                  <div className="lines">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                  </div>
+                  <div className="text">
+                    <p>{status === 'uploading' ? 'Uploading...' : 'Ready to upload'}</p>
+                    <p>Please wait {timer}s</p>
+                    <p>Do not close</p>
+                  </div>
+                </div>
+                <div className="keyboard">
+                  <div className="key"></div>
+                  <div className="key"></div>
+                  <div className="key"></div>
+                  <div className="key"></div>
+                  <div className="key"></div>
+                  <div className="key"></div>
+                  <div className="key"></div>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="progress-container mb-6">
+                <div className="progress-bar"></div>
+              </div>
+
+              {/* Status Indicator */}
+              <div className="flex justify-between w-full max-w-md mb-8 px-4">
+                {['idle', 'uploading', 'success', 'resetting'].map((s, i) => (
+                  <div key={s} className="flex flex-col items-center">
+                    <div className={`w-3 h-3 rounded-full mb-2 ${
+                      status === s 
+                        ? 'bg-blue-600 scale-125' 
+                        : i <= ['idle', 'uploading', 'success', 'resetting'].indexOf(status)
+                        ? 'bg-green-500'
+                        : 'bg-gray-300'
+                    } transition-all`} />
+                    <span className="text-xs font-medium text-gray-600 capitalize">{s}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Success Checkmark */}
+              {showSuccess && (
+                <div className="success-checkmark my-6">
+                  <div className="check-icon">
+                    <span className="icon-line line-tip"></span>
+                    <span className="icon-line line-long"></span>
+                    <div className="icon-circle"></div>
+                    <div className="icon-fix"></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Status Text */}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-800 mb-2">
+                  {status === 'idle' && '📁 Siap Upload'}
+                  {status === 'uploading' && `⏳ Mengupload... ${progress.toFixed(1)}%`}
+                  {status === 'success' && '✅ Upload Berhasil!'}
+                  {status === 'resetting' && '🔄 Reset Form...'}
+                </div>
+                <p className="text-gray-600">
+                  {status === 'idle' && 'Klik tombol "Kirim" untuk memulai'}
+                  {status === 'uploading' && 'File sedang diproses, harap tunggu...'}
+                  {status === 'success' && 'Bukti pembayaran berhasil dikirim!'}
+                  {status === 'resetting' && 'Mereset form untuk upload baru...'}
+                </p>
+              </div>
+            </div>
+
+            {/* Sound Status */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Sound Effects:</span>
+                <div className="flex space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${status === 'uploading' ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+                  <div className={`w-3 h-3 rounded-full ${status === 'success' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <div className={`w-3 h-3 rounded-full ${status === 'resetting' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Sound akan aktif selama proses upload
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col items-center">
-          <div className={`w-3 h-3 rounded-full ${uploadStatus === 'reset' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-          <span className="text-sm mt-1 text-gray-600">Selesai</span>
+
+        {/* Footer Info */}
+        <div className="mt-8 text-center text-sm text-gray-500">
+          <p>Proses upload membutuhkan waktu 15 detik. Pastikan koneksi internet stabil.</p>
+          <p className="mt-1">Setelah berhasil, sistem akan otomatis reset dalam 5 detik.</p>
         </div>
       </div>
     </div>
   );
 };
 
-export default UploadPaymentProof;
+export default TypewriterLoader;
