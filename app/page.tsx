@@ -2,8 +2,9 @@ import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, MapPin, Wifi, Car, UtensilsCrossed, Shield, Droplets, Zap, Users } from "lucide-react"
-import type { Room } from "@/lib/types"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Building2, MapPin, Wifi, Car, UtensilsCrossed, Shield, Droplets, Zap, Users, Star, MessageSquare } from "lucide-react"
+import type { Room, AlumniReview } from "@/lib/types"
 import { GalleryCard } from "@/components/gallery/gallery-card"
 import { HomeHeader } from '@/components/home-header'
 import Link from "next/link"
@@ -29,10 +30,35 @@ const galleryImages = [
 export default async function HomePage() {
     const supabase = await createClient()
 
-    const { data: rooms } = await supabase.from("rooms").select("*").order("room_number")
+    const [roomsRes, alumniRes] = await Promise.all([
+        supabase.from("rooms").select("*").order("room_number"),
+        supabase.from("alumni_reviews")
+            .select("*")
+            .eq("status", "approved")
+            .order("created_at", { ascending: false })
+            .limit(6)
+    ])
 
-    const vacantRooms = (rooms as Room[] | null)?.filter((r) => r.status === "vacant") || []
-    const totalRooms = rooms?.length || 0
+    const rooms = (roomsRes.data as Room[] | null) || []
+    const alumniReviews = (alumniRes.data as AlumniReview[] | null) || []
+
+    const vacantRooms = rooms.filter((r) => r.status === "vacant")
+    const totalRooms = rooms.length
+
+    const renderStars = (rating: number) => {
+        return (
+            <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                        key={star}
+                        className={`w-4 h-4 ${
+                            star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                        }`}
+                    />
+                ))}
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-background">
@@ -121,7 +147,7 @@ export default async function HomePage() {
                     <h2 className="mb-8 text-center text-3xl font-bold">Ketersediaan Kamar</h2>
                     {rooms && rooms.length > 0 ? (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {(rooms as Room[]).map((room) => (
+                            {rooms.map((room) => (
                                 <Card key={room.id} className={room.status === "vacant" ? "border-primary/50" : ""}>
                                     <CardContent className="p-6">
                                         <div className="mb-4 flex items-center justify-between">
@@ -147,9 +173,67 @@ export default async function HomePage() {
                     )}
                 </div>
             </section>
+
+            {/* Alumni Reviews Section */}
+            <section id="cerita-alumni" className="bg-muted/30 py-16">
+                <div className="container mx-auto px-4">
+                    <div className="text-center mb-8">
+                        <h2 className="text-3xl font-bold mb-2">Cerita Alumni</h2>
+                        <p className="text-muted-foreground">Pengalaman mereka yang pernah tinggal di sini</p>
+                    </div>
+
+                    {alumniReviews && alumniReviews.length > 0 ? (
+                        <>
+                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                                {alumniReviews.map((review) => (
+                                    <Card key={review.id} className="border-0 bg-background hover:shadow-lg transition-shadow">
+                                        <CardContent className="p-6">
+                                            <div className="flex items-start gap-4 mb-4">
+                                                <Avatar className="h-12 w-12">
+                                                    <AvatarImage src={review.photo_url || undefined} alt={review.name} />
+                                                    <AvatarFallback>{review.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold">{review.name}</h4>
+                                                    <p className="text-sm text-muted-foreground">{review.stay_date}</p>
+                                                </div>
+                                            </div>
+                                            <div className="mb-3">
+                                                {renderStars(review.rating)}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground line-clamp-4">{review.review}</p>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                            
+                            <div className="text-center">
+                                <Link href="/cerita-alumni">
+                                    <Button size="lg" variant="outline">
+                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                        Bagikan Cerita Anda
+                                    </Button>
+                                </Link>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center py-12">
+                            <MessageSquare className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2">Belum Ada Cerita</h3>
+                            <p className="text-muted-foreground mb-6">Jadilah yang pertama membagikan pengalaman Anda!</p>
+                            <Link href="/cerita-alumni">
+                                <Button size="lg">
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    Bagikan Cerita Anda
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
+                </div>
+            </section>
             
             {/* Location Section */}
-            <section className="bg-muted/30 py-16">
+            <section className="py-16">
                 <div className="container mx-auto px-4">
                     <h2 className="mb-8 text-center text-3xl font-bold">Lokasi</h2>
                     <div className="mx-auto max-w-4xl overflow-hidden rounded-lg">
@@ -176,7 +260,7 @@ export default async function HomePage() {
             {/* Footer */}
             <footer className="border-t py-8">
                 <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-                    <p>&copy; {new Date().getFullYear()} KostManager. By Cah Kuno - Murfhi .</p>
+                    <p>&copy; {new Date().getFullYear()} KostManager. By Cah Kuno - Murfhi.</p>
                 </div>
             </footer>
         </div>
