@@ -11,21 +11,32 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, CheckCircle2, Download, Loader2 } from "lucide-react"
 import type { TenantWithPayment } from "@/lib/types"
 
-// Sound effect for typewriter animation (12 seconds duration)
-// Audio file harus ditempatkan di: /public/sound-effect-payment.mp3
+// Sound effect management dengan durasi yang disesuaikan
 const playTypewriterSound = () => {
   if (typeof window !== 'undefined') {
     try {
       const audio = new Audio("/sound-effect-payment.mp3")
       audio.volume = 0.5
-      audio.play().catch(e => console.log("Audio play failed:", e))
+      audio.loop = false // Pastikan tidak loop
+      
+      // Play the audio
+      const playPromise = audio.play()
+      
+      if (playPromise !== undefined) {
+        playPromise.catch(e => console.log("Audio play failed:", e))
+      }
+      
+      return audio // Return audio object untuk kontrol lebih lanjut
     } catch (e) {
       console.log("Audio error:", e)
+      return null
     }
   }
+  return null
 }
 
 // Typewriter Loading Component
+// Typewriter Loading Component dengan durasi 15 detik
 const TypewriterLoader = () => {
   return (
     <div className="flex items-center justify-center">
@@ -37,7 +48,7 @@ const TypewriterLoader = () => {
           --paper: #EEF0FD;
           --text: #D3D4EC;
           --tool: #FBC56C;
-          --duration: 12s;
+          --duration: 15s;
           position: relative;
           animation: bounce05 var(--duration) linear infinite;
         }
