@@ -1,17 +1,16 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, CheckCircle2, Download, Loader2, AlertTriangle } from "lucide-react"
+import { Upload, CheckCircle2, Download, Loader2, AlertTriangle, Clock } from "lucide-react"
 import type { TenantWithPayment } from "@/lib/types"
 
-// Typewriter Loading Component (unchanged)
+// Typewriter Loading Component
 const TypewriterLoader = () => {
   return (
     <div className="flex items-center justify-center">
@@ -69,6 +68,17 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [codeValidated, setCodeValidated] = useState(false)
 
+  const selectedTenant = tenants.find((t) => t.id === tenantId)
+
+  // Check if tenant has pending payment with proof
+  const hasPendingProof = useMemo(() => {
+    if (!selectedTenant || !selectedTenant.payments) return false
+    
+    return selectedTenant.payments.some(
+      (p: any) => p.status === 'pending' && p.proof_url !== null
+    )
+  }, [selectedTenant])
+
   // Validate unique code and auto-select tenant
   const handleCodeValidation = () => {
     const foundTenant = tenants.find(t => t.unique_code === uniqueCode.toUpperCase().trim())
@@ -91,8 +101,6 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
       setError("Kode unik tidak valid. Pastikan Anda memasukkan kode yang benar dari admin.")
     }
   }
-
-  const selectedTenant = tenants.find((t) => t.id === tenantId)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -125,6 +133,12 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
     
     if (!codeValidated) {
       setError("Silakan validasi kode unik terlebih dahulu")
+      return
+    }
+    
+    // Check for pending proof before submission
+    if (hasPendingProof) {
+      setError("Anda masih memiliki bukti pembayaran yang sedang diverifikasi. Mohon tunggu hingga admin memverifikasi pembayaran sebelumnya.")
       return
     }
     
@@ -266,6 +280,17 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
           </p>
         </div>
 
+        {/* Warning if pending proof exists */}
+        {codeValidated && hasPendingProof && (
+          <Alert variant="destructive" className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+            <Clock className="h-4 w-4" />
+            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+              <strong>Perhatian!</strong> Anda masih memiliki bukti pembayaran yang sedang menunggu verifikasi admin. 
+              Mohon tunggu hingga pembayaran sebelumnya diverifikasi terlebih dahulu sebelum mengirim bukti baru.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Show remaining form only after code validation */}
         {codeValidated && selectedTenant && (
           <>
@@ -288,6 +313,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
+                disabled={hasPendingProof}
               />
             </div>
 
@@ -300,6 +326,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
                 onChange={(e) => setPaymentDate(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
                 required
+                disabled={hasPendingProof}
               />
             </div>
 
@@ -333,6 +360,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
                 onChange={handleFileChange}
                 className="cursor-pointer"
                 required
+                disabled={hasPendingProof}
               />
               {file && <p className="text-sm text-muted-foreground">File terpilih: {file.name}</p>}
               <p className="text-xs text-muted-foreground">Format: JPG, PNG, WebP, atau PDF. Maksimal 5MB.</p>
@@ -346,6 +374,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
+                disabled={hasPendingProof}
               />
             </div>
           </>
@@ -359,11 +388,20 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
         )}
 
         {codeValidated && (
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isLoading || hasPendingProof}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Mengirim...
+              </>
+            ) : hasPendingProof ? (
+              <>
+                <Clock className="mr-2 h-4 w-4" />
+                Menunggu Verifikasi
               </>
             ) : (
               <>
