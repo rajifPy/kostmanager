@@ -1,3 +1,4 @@
+// lib/types.ts
 export interface Room {
   id: string
   room_number: string
@@ -64,6 +65,7 @@ export interface TenantWithPayment extends Tenant {
   payments?: Payment[]
   latestPayment?: Payment
   hasUnpaidPayment?: boolean // Flag for active display
+  latestUnpaidPayment?: Payment
 }
 
 export interface AlumniReview {
@@ -74,6 +76,22 @@ export interface AlumniReview {
   review: string
   rating: number
   status: "pending" | "approved" | "rejected"
+  created_at: string
+  updated_at: string
+}
+
+export interface Booking {
+  id: string
+  name: string
+  phone: string
+  email: string | null
+  room_preference: string | null // "single", "shared", "any"
+  budget_min: number | null
+  budget_max: number | null
+  move_in_date: string | null
+  duration_months: number | null
+  message: string | null
+  status: "pending" | "contacted" | "confirmed" | "cancelled"
   created_at: string
   updated_at: string
 }
