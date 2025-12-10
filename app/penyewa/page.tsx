@@ -163,12 +163,6 @@ export default async function PenyewaPage() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold">{tenant.name}</h3>
-                              <Badge variant="outline" className="font-mono text-xs">
-                                {tenant.unique_code}
-                              </Badge>
-                            </div>
                             <p className="text-sm text-muted-foreground">Kamar {tenant.room?.room_number || "-"}</p>
                             {unpaidPayment && (
                               <div className="mt-2 space-y-1">
