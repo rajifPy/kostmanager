@@ -5,21 +5,15 @@ import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from 'next-themes'
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const geistSans = Geist({ 
+  subsets: ["latin"],
+  variable: '--font-sans'
+})
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
-        </ThemeProvider>
-        <Analytics />
-      </body>
-    </html>
-  )
-}
+const geistMono = Geist_Mono({ 
+  subsets: ["latin"],
+  variable: '--font-mono'
+})
 
 export const metadata: Metadata = {
   title: "KostManager - Aplikasi Manajemen Kost",
@@ -50,9 +44,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans antialiased`}>
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
