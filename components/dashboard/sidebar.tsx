@@ -3,11 +3,10 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Building2, LayoutDashboard, DoorOpen, Users, CreditCard, Bell, LogOut } from "lucide-react"
+import { Building2, LayoutDashboard, DoorOpen, Users, CreditCard, Bell, LogOut, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { TrendingUp } from "lucide-react"
 import { ThemeToggle } from '@/components/theme-toggle'
 
 const navigation = [
@@ -55,8 +54,9 @@ export function Sidebar() {
           )
         })}
       </nav>
-      <div className="border-t p-4">
-        <div className="flex justify-center">
+      <div className="border-t p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Theme</span>
           <ThemeToggle />
         </div>
         <Button
