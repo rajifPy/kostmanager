@@ -147,8 +147,7 @@ export default async function HomePage() {
                     )}
                 </div>
             </section>
-
-      // Add this section to app/page.tsx after the Rooms Section and before Location Section
+            
             {/* Location Section */}
             <section className="bg-muted/30 py-16">
                 <div className="container mx-auto px-4">
