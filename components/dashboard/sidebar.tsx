@@ -1,9 +1,10 @@
+// components/dashboard/sidebar.tsx
 "use client"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Building2, LayoutDashboard, DoorOpen, Users, CreditCard, Bell, LogOut, TrendingUp, MessageSquare } from "lucide-react"
+import { Building2, LayoutDashboard, DoorOpen, Users, CreditCard, Bell, LogOut, TrendingUp, MessageSquare, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -16,6 +17,7 @@ const navigation = [
   { name: "Penyewa", href: "/dashboard/tenants", icon: Users },
   { name: "Pembayaran", href: "/dashboard/payments", icon: CreditCard },
   { name: "Reminder", href: "/dashboard/reminders", icon: Bell },
+  { name: "Booking", href: "/dashboard/bookings", icon: Calendar },
   { name: "Cerita Alumni", href: "/dashboard/alumni-reviews", icon: MessageSquare },
 ]
 
