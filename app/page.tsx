@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Building2, MapPin, Wifi, Car, UtensilsCrossed, Shield, Droplets, Zap, Users } from "lucide-react"
 import type { Room } from "@/lib/types"
 import { GalleryCard } from "@/components/gallery/gallery-card"
+import { ThemeToggle } from '@/components/theme-toggle'
 
 const facilities = [
   { icon: Wifi, name: "WiFi Gratis", description: "Internet cepat 24 jam" },
@@ -43,6 +44,7 @@ export default async function HomePage() {
             <span className="text-xl font-bold">KostManager</span>
           </Link>
           <nav className="flex items-center gap-4">
+            <ThemeToggle />
             <Link href="/penyewa" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Daftar Penyewa
             </Link>
