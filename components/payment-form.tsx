@@ -11,18 +11,25 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, CheckCircle2, Download, Loader2 } from "lucide-react"
 import type { TenantWithPayment } from "@/lib/types"
 
-// Sound effect for success
+// Sound effect for typewriter animation (12 seconds duration)
+// Audio file harus ditempatkan di: /public/sound-effect-payment.mp3
 const playTypewriterSound = () => {
-  const audio = new Audio("/sound-effect-payment.mp3");
-  audio.volume = 0.5; // Set volume to 50%
-  audio.play().catch(e => console.log("Audio play failed:", e));
-};
+  if (typeof window !== 'undefined') {
+    try {
+      const audio = new Audio("/sound-effect-payment.mp3")
+      audio.volume = 0.5
+      audio.play().catch(e => console.log("Audio play failed:", e))
+    } catch (e) {
+      console.log("Audio error:", e)
+    }
+  }
+}
 
-// Typewriter Loading Component - Updated to 12 seconds
+// Typewriter Loading Component
 const TypewriterLoader = () => {
   return (
     <div className="flex items-center justify-center">
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{__html: `
         .typewriter {
           --blue: #5C86FF;
           --blue-dark: #275EFE;
@@ -30,7 +37,7 @@ const TypewriterLoader = () => {
           --paper: #EEF0FD;
           --text: #D3D4EC;
           --tool: #FBC56C;
-          --duration: 12s; /* Updated from 7s to 12s */
+          --duration: 12s;
           position: relative;
           animation: bounce05 var(--duration) linear infinite;
         }
@@ -218,7 +225,6 @@ const TypewriterLoader = () => {
           }
         }
 
-        /* Updated animations for 12-second duration */
         @keyframes bounce-12s {
           0%, 100% {
             transform: translateY(0);
@@ -239,30 +245,28 @@ const TypewriterLoader = () => {
             transform: translateX(-100%);
           }
           100% {
-            transform: translateX(100%);
+            transform: translateX(0%);
           }
         }
-      `}</style>
+      `}} />
       <div className="typewriter">
         <div className="slide"><i /></div>
         <div className="paper" />
         <div className="keyboard" />
       </div>
     </div>
-  );
-};
+  )
+}
 
-// Loading Overlay Component - Updated to 12 seconds
+// Loading Overlay Component
 const LoadingOverlay = ({ message = "Mengirim bukti pembayaran..." }: { message?: string }) => {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-2xl max-w-sm md:max-w-md w-full mx-4 animate-in zoom-in duration-300">
-        {/* Typewriter Animation */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-2xl max-w-sm md:max-w-md w-full mx-4">
         <div className="mb-6">
           <TypewriterLoader />
         </div>
         
-        {/* Loading Text */}
         <div className="text-center space-y-3">
           <h3 className="text-lg md:text-xl font-bold text-gray-800 dark:text-gray-100">
             {message}
@@ -272,7 +276,6 @@ const LoadingOverlay = ({ message = "Mengirim bukti pembayaran..." }: { message?
           </p>
         </div>
 
-        {/* Animated Dots - Updated to 12 seconds */}
         <div className="mt-6 flex justify-center items-center gap-2">
           <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '0s'}}></div>
           <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '2.4s'}}></div>
@@ -281,17 +284,16 @@ const LoadingOverlay = ({ message = "Mengirim bukti pembayaran..." }: { message?
           <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '9.6s'}}></div>
         </div>
 
-        {/* Progress Bar - Updated to 12 seconds */}
         <div className="mt-6 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full animate-pulse" style={{
+          <div className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 rounded-full" style={{
             width: '100%',
-            animation: 'progress-12s 12s ease-in-out infinite'
+            animation: 'progress-12s 12s ease-in-out forwards'
           }}></div>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 interface PaymentFormProps {
   tenants: TenantWithPayment[]
@@ -300,28 +302,32 @@ interface PaymentFormProps {
 export function TenantPaymentForm({ tenants }: PaymentFormProps) {
   const [tenantId, setTenantId] = useState("")
   const [amount, setAmount] = useState("")
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0])
+  const [paymentDate, setPaymentDate] = useState("")
   const [notes, setNotes] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const successSoundPlayed = useRef(false)
+  const typewriterSoundPlayed = useRef(false)
 
   const selectedTenant = tenants.find((t) => t.id === tenantId)
 
-  // Play sound effect when success state becomes true
+  // Set default date on mount
   useEffect(() => {
-    if (success && !successSoundPlayed.current) {
-      playSuccessSound();
-      successSoundPlayed.current = true;
+    setPaymentDate(new Date().toISOString().split('T')[0])
+  }, [])
+
+  // Play typewriter sound when loading starts
+  useEffect(() => {
+    if (isLoading && !typewriterSoundPlayed.current) {
+      playTypewriterSound()
+      typewriterSoundPlayed.current = true
     }
     
-    // Reset the flag when success state is false
-    if (!success) {
-      successSoundPlayed.current = false;
+    if (!isLoading) {
+      typewriterSoundPlayed.current = false
     }
-  }, [success]);
+  }, [isLoading])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -362,7 +368,6 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
     const supabase = createClient()
 
     try {
-      // Upload file to Supabase Storage
       const fileExt = file.name.split(".").pop()
       const fileName = `${tenantId}-${Date.now()}.${fileExt}`
 
@@ -372,14 +377,11 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
         console.error("Upload error:", uploadError)
       }
 
-      // Get public URL
       const { data: urlData } = supabase.storage.from("payment-proofs").getPublicUrl(fileName)
 
-      // Find the latest payment for this tenant to use as due_date reference
       const latestPayment = selectedTenant?.latestPayment
       const dueDate = latestPayment?.due_date || new Date().toISOString().split("T")[0]
 
-      // Create payment record with payment date
       const { error: insertError } = await supabase.from("payments").insert({
         tenant_id: tenantId,
         amount: Number.parseFloat(amount),
@@ -395,7 +397,6 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
       setIsLoading(false)
       setSuccess(true)
       
-      // Reset form after 5 seconds (extended to match longer animation)
       setTimeout(() => {
         setSuccess(false)
         setTenantId("")
@@ -416,24 +417,19 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
       <div className="w-full max-w-2xl mx-auto">
         <div className="rounded-2xl border-2 border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 p-8 md:p-12 shadow-xl">
           <div className="flex flex-col items-center justify-center gap-6">
-            {/* Animated Checkmark */}
             <div className="relative">
-              {/* Outer ring with ping animation - Updated to 12 seconds */}
-              <div className="absolute inset-0" style={{ animation: 'ping 12s cubic-bezier(0, 0, 0.2, 1) infinite' }}>
+              <div className="absolute inset-0 animate-ping">
                 <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-green-500 opacity-20"></div>
               </div>
-              {/* Middle ring with slower pulse - Updated to 12 seconds */}
-              <div className="absolute inset-0" style={{ animation: 'pulse 12s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+              <div className="absolute inset-0 animate-pulse">
                 <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-green-400 opacity-30"></div>
               </div>
-              {/* Main checkmark circle */}
-              <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg transform transition-transform duration-700 hover:scale-105">
-                <CheckCircle2 className="w-14 h-14 md:w-16 md:h-16 text-white animate-in zoom-in duration-700" strokeWidth={2.5} />
+              <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                <CheckCircle2 className="w-14 h-14 md:w-16 md:h-16 text-white" strokeWidth={2.5} />
               </div>
             </div>
 
-            {/* Success Text */}
-            <div className="text-center space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="text-center space-y-3">
               <h3 className="text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400">
                 🎉 Berhasil Dikirim!
               </h3>
@@ -447,19 +443,17 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
               </div>
             </div>
 
-            {/* Status Info */}
             <div className="w-full mt-4 p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-green-200 dark:border-green-800">
               <div className="flex items-center justify-center gap-3 text-sm md:text-base">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500" style={{ animation: 'pulse 12s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                   <span className="text-gray-700 dark:text-gray-300 font-medium">Status:</span>
                 </div>
                 <span className="text-green-600 dark:text-green-400 font-semibold">Menunggu Verifikasi</span>
               </div>
             </div>
 
-            {/* Auto redirect info */}
-            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 text-center" style={{ animation: 'pulse 12s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 text-center animate-pulse">
               Formulir akan direset otomatis dalam 5 detik...
             </p>
           </div>
@@ -529,11 +523,6 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
                 src="/qr-payment.jpg" 
                 alt="QR Code Pembayaran BNI" 
                 className="max-w-full max-h-full object-contain"
-                onError={(e) => {
-                  const target = e.currentTarget as HTMLImageElement;
-                  target.src = "/qr-payment.jpg";
-                  target.alt = "QR Code tidak dapat dimuat";
-                }}
               />
             </div>
             <div className="mt-3 text-center">
@@ -589,7 +578,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" style={{ animationDuration: '12s' }} />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Mengirim...
             </>
           ) : (
