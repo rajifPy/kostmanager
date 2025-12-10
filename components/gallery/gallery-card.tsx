@@ -231,9 +231,14 @@ export function GalleryCard({ image, title }: GalleryCardProps) {
         {/* Back Side */}
         <div className="card-back">
           <div className="back-content">
-            <div className="back-title">Fasilitas Lengkap</div>
+            <div className="back-title">Peraturan kost</div>
             <div className="back-description">
-              Fasilitas modern dan nyaman untuk hunian Anda dengan kualitas terbaik
+              1. Tidak boleh membawa lawan jenis kedalam Kamar
+              2. Dilarang Gay
+              3. Tidak boleh membuang sampah sembarangan
+              4. Hargai Sesama teman/tetangga Kost
+              5. Dilarang menyetel musik atau berisik di tengah malam
+              6. Jangan lupa Makan
             </div>
           </div>
         </div>
@@ -242,3 +247,4 @@ export function GalleryCard({ image, title }: GalleryCardProps) {
   )
 
 }
+
