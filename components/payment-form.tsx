@@ -262,7 +262,7 @@ export function TenantPaymentForm({ tenants }: PaymentFormProps) {
             </Alert>
           )}
           <p className="text-xs text-muted-foreground">
-            Dapatkan kode unik dari admin atau cek informasi kamar Anda
+            Kode dibuat oleh Admin. Hubungi Admin jika belum mendapatkan kode unik
           </p>
         </div>
 
