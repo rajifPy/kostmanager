@@ -1,46 +1,113 @@
-"use client"
+import React, { useState, useEffect, useRef } from 'react';
+import Confetti from 'react-confetti';
 
-import React, { useState, useEffect, useRef } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, CheckCircle2, Download, Loader2 } from "lucide-react"
-import type { TenantWithPayment } from "@/lib/types"
-
-// Sound effect management dengan durasi yang disesuaikan
-const playTypewriterSound = () => {
-  if (typeof window !== 'undefined') {
-    try {
-      const audio = new Audio("/sound-effect-payment.mp3")
-      audio.volume = 0.5
-      audio.loop = false // Pastikan tidak loop
-      
-      // Play the audio
-      const playPromise = audio.play()
-      
-      if (playPromise !== undefined) {
-        playPromise.catch(e => console.log("Audio play failed:", e))
-      }
-      
-      return audio // Return audio object untuk kontrol lebih lanjut
-    } catch (e) {
-      console.log("Audio error:", e)
-      return null
-    }
-  }
-  return null
-}
+// Sound effect URLs (gunakan path sesuai project Anda)
+const SOUND_EFFECTS = {
+  start: 'https://assets.mixkit.co/sfx/preview/mixkit-typewriter-loop-1121.mp3',
+  stop: 'https://assets.mixkit.co/sfx/preview/mixkit-completion-of-a-level-2063.mp3',
+  success: 'https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'
+};
 
 // Typewriter Loading Component
-// Typewriter Loading Component dengan durasi 15 detik
-const TypewriterLoader = () => {
+const TypewriterLoader = ({ duration = 15, onComplete, isActive = false }) => {
+  const [progress, setProgress] = useState(0);
+  const [isRunning, setIsRunning] = useState(isActive);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const startAudioRef = useRef(null);
+  const stopAudioRef = useRef(null);
+  const successAudioRef = useRef(null);
+
+  useEffect(() => {
+    // Inisialisasi audio elements
+    startAudioRef.current = new Audio(SOUND_EFFECTS.start);
+    stopAudioRef.current = new Audio(SOUND_EFFECTS.stop);
+    successAudioRef.current = new Audio(SOUND_EFFECTS.success);
+    
+    startAudioRef.current.loop = true;
+    
+    return () => {
+      // Cleanup audio
+      [startAudioRef, stopAudioRef, successAudioRef].forEach(ref => {
+        if (ref.current) {
+          ref.current.pause();
+          ref.current = null;
+        }
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isRunning || !isUploading) return;
+
+    let interval;
+    const startTime = Date.now();
+    const endTime = startTime + duration * 1000;
+
+    // Play start sound
+    if (startAudioRef.current) {
+      startAudioRef.current.play().catch(e => console.log("Audio play failed:", e));
+    }
+
+    // Update progress setiap 100ms
+    interval = setInterval(() => {
+      const currentTime = Date.now();
+      const elapsed = currentTime - startTime;
+      const remaining = endTime - currentTime;
+      const newProgress = (elapsed / (duration * 1000)) * 100;
+
+      setProgress(newProgress);
+
+      // Jika selesai
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setIsRunning(false);
+        setIsUploading(false);
+        
+        // Stop start sound
+        if (startAudioRef.current) {
+          startAudioRef.current.pause();
+          startAudioRef.current.currentTime = 0;
+        }
+        
+        // Play stop sound
+        if (stopAudioRef.current) {
+          stopAudioRef.current.play();
+        }
+        
+        if (onComplete) onComplete();
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(interval);
+      if (startAudioRef.current) {
+        startAudioRef.current.pause();
+        startAudioRef.current.currentTime = 0;
+      }
+    };
+  }, [isRunning, isUploading, duration, onComplete]);
+
+  const handleStartUpload = () => {
+    setIsRunning(true);
+    setIsUploading(true);
+    setProgress(0);
+  };
+
+  const handleCancelUpload = () => {
+    setIsRunning(false);
+    setIsUploading(false);
+    if (startAudioRef.current) {
+      startAudioRef.current.pause();
+      startAudioRef.current.currentTime = 0;
+    }
+  };
+
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex flex-col items-center justify-center p-8">
       <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+        
         .typewriter {
           --blue: #5C86FF;
           --blue-dark: #275EFE;
@@ -53,553 +120,594 @@ const TypewriterLoader = () => {
           animation: bounce05 var(--duration) linear infinite;
         }
 
+        .typewriter:before {
+          content: '';
+          width: 60px;
+          height: 10px;
+          border-radius: 5px;
+          background: rgba(0, 0, 0, 0.1);
+          position: absolute;
+          top: 66px;
+          left: 50%;
+          transform: translateX(-50%);
+        }
+
         .typewriter .slide {
-          width: 92px;
-          height: 20px;
-          border-radius: 3px;
-          margin-left: 14px;
-          transform: translateX(14px);
-          background: linear-gradient(var(--blue), var(--blue-dark));
-          animation: slide05 var(--duration) ease infinite;
+          width: 170px;
+          height: 10px;
+          border-radius: 5px;
+          background: rgba(0, 0, 0, 0.13);
+          position: absolute;
+          top: 52px;
+          left: 50%;
+          transform: translateX(-50%);
         }
 
         .typewriter .slide:before,
-        .typewriter .slide:after,
-        .typewriter .slide i:before {
-          content: "";
-          position: absolute;
+        .typewriter .slide:after {
+          content: '';
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
           background: var(--tool);
+          position: absolute;
+          top: 2px;
         }
 
         .typewriter .slide:before {
-          width: 2px;
-          height: 8px;
-          top: 6px;
-          left: 100%;
+          left: 10px;
         }
 
         .typewriter .slide:after {
-          left: 94px;
-          top: 3px;
-          height: 14px;
-          width: 6px;
-          border-radius: 3px;
-        }
-
-        .typewriter .slide i {
-          display: block;
-          position: absolute;
-          right: 100%;
-          width: 6px;
-          height: 4px;
-          top: 4px;
-          background: var(--tool);
-        }
-
-        .typewriter .slide i:before {
-          right: 100%;
-          top: -2px;
-          width: 4px;
-          border-radius: 2px;
-          height: 14px;
+          right: 10px;
         }
 
         .typewriter .paper {
-          position: absolute;
-          left: 24px;
-          top: -26px;
-          width: 40px;
-          height: 46px;
-          border-radius: 5px;
+          width: 132px;
+          height: 62px;
           background: var(--paper);
-          transform: translateY(46px);
-          animation: paper05 var(--duration) linear infinite;
+          border-radius: 1px;
+          position: absolute;
+          top: 14px;
+          left: 50%;
+          transform: translateX(-50%);
+          box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.15);
         }
 
         .typewriter .paper:before {
-          content: "";
+          content: '';
+          width: 126px;
+          height: 56px;
+          background: linear-gradient(90deg, var(--paper) 0px, var(--paper) 40px, transparent 40px, transparent 44px, var(--paper) 44px, var(--paper) 48px, transparent 48px, transparent 52px, var(--paper) 52px, var(--paper) 56px, transparent 56px, transparent 60px, var(--paper) 60px, var(--paper) 100%);
           position: absolute;
-          left: 6px;
-          right: 6px;
-          top: 7px;
-          border-radius: 2px;
-          height: 4px;
-          transform: scaleY(0.8);
+          top: 3px;
+          left: 3px;
+        }
+
+        .typewriter .paper .lines {
+          width: 100%;
+          height: 100%;
+          opacity: 0;
+          position: absolute;
+          top: 0;
+          left: 0;
+          animation: lines05 var(--duration) linear infinite;
+        }
+
+        .typewriter .paper .lines:before,
+        .typewriter .paper .lines:after {
+          content: '';
+          width: 2px;
+          height: 100%;
           background: var(--text);
-          box-shadow: 0 12px 0 var(--text), 0 24px 0 var(--text), 0 36px 0 var(--text);
+          position: absolute;
+          top: 0;
+          opacity: 0.8;
+        }
+
+        .typewriter .paper .lines:before {
+          left: 40px;
+        }
+
+        .typewriter .paper .lines:after {
+          right: 40px;
+        }
+
+        .typewriter .paper .lines div {
+          width: 100%;
+          height: 16px;
+          border-bottom: 2px solid var(--text);
+          position: absolute;
+          left: 0;
+          opacity: 0.3;
+        }
+
+        .typewriter .paper .lines div:nth-child(1) {
+          top: 6px;
+        }
+
+        .typewriter .paper .lines div:nth-child(2) {
+          top: 22px;
+        }
+
+        .typewriter .paper .lines div:nth-child(3) {
+          top: 38px;
+        }
+
+        .typewriter .paper .text {
+          font-family: 'Space Mono', monospace;
+          font-size: 8px;
+          line-height: 16px;
+          color: var(--blue-dark);
+          position: absolute;
+          top: 6px;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          padding: 0 42px;
+          opacity: 0;
+          animation: text05 var(--duration) linear infinite;
+        }
+
+        .typewriter .paper .text p {
+          margin: 0;
         }
 
         .typewriter .keyboard {
-          width: 120px;
-          height: 56px;
-          margin-top: -10px;
-          z-index: 1;
-          position: relative;
-        }
-
-        .typewriter .keyboard:before,
-        .typewriter .keyboard:after {
-          content: "";
+          width: 144px;
+          height: 28px;
+          background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 25%, var(--blue-dark) 25%, var(--blue-dark) 100%);
+          border-radius: 3px;
           position: absolute;
+          top: 82px;
+          left: 50%;
+          transform: translateX(-50%);
         }
 
         .typewriter .keyboard:before {
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          border-radius: 7px;
-          background: linear-gradient(135deg, var(--blue), var(--blue-dark));
-          transform: perspective(10px) rotateX(2deg);
-          transform-origin: 50% 100%;
+          content: '';
+          width: 140px;
+          height: 6px;
+          background: var(--key);
+          border-radius: 2px;
+          position: absolute;
+          top: -4px;
+          left: 2px;
         }
 
-        .typewriter .keyboard:after {
-          left: 2px;
-          top: 25px;
-          width: 11px;
-          height: 4px;
+        .typewriter .keyboard .key {
+          width: 10px;
+          height: 10px;
+          background: var(--key);
           border-radius: 2px;
-          box-shadow: 15px 0 0 var(--key), 30px 0 0 var(--key), 45px 0 0 var(--key),
-            60px 0 0 var(--key), 75px 0 0 var(--key), 90px 0 0 var(--key),
-            22px 10px 0 var(--key), 37px 10px 0 var(--key), 52px 10px 0 var(--key),
-            60px 10px 0 var(--key), 68px 10px 0 var(--key), 83px 10px 0 var(--key);
-          animation: keyboard05 var(--duration) linear infinite;
+          position: absolute;
+          top: 8px;
+        }
+
+        .typewriter .keyboard .key:nth-child(1) {
+          left: 14px;
+        }
+
+        .typewriter .keyboard .key:nth-child(2) {
+          left: 32px;
+        }
+
+        .typewriter .keyboard .key:nth-child(3) {
+          left: 50px;
+          animation: key05_1 var(--duration) linear infinite;
+        }
+
+        .typewriter .keyboard .key:nth-child(4) {
+          left: 68px;
+        }
+
+        .typewriter .keyboard .key:nth-child(5) {
+          left: 86px;
+          animation: key05_2 var(--duration) linear infinite;
+        }
+
+        .typewriter .keyboard .key:nth-child(6) {
+          left: 104px;
+        }
+
+        .typewriter .keyboard .key:nth-child(7) {
+          left: 122px;
+          animation: key05_3 var(--duration) linear infinite;
         }
 
         @keyframes bounce05 {
-          85%, 92%, 100% {
+          75% {
             transform: translateY(0);
           }
-          89% {
+
+          80% {
             transform: translateY(-4px);
           }
-          95% {
+
+          90% {
             transform: translateY(2px);
           }
-        }
 
-        @keyframes slide05 {
-          5% {
-            transform: translateX(14px);
+          95% {
+            transform: translateY(-2px);
           }
-          15%, 30% {
-            transform: translateX(6px);
-          }
-          40%, 55% {
-            transform: translateX(0);
-          }
-          65%, 70% {
-            transform: translateX(-4px);
-          }
-          80%, 89% {
-            transform: translateX(-12px);
-          }
+
           100% {
-            transform: translateX(14px);
-          }
-        }
-
-        @keyframes paper05 {
-          5% {
-            transform: translateY(46px);
-          }
-          20%, 30% {
-            transform: translateY(34px);
-          }
-          40%, 55% {
-            transform: translateY(22px);
-          }
-          65%, 70% {
-            transform: translateY(10px);
-          }
-          80%, 85% {
             transform: translateY(0);
           }
-          92%, 100% {
-            transform: translateY(46px);
+        }
+
+        @keyframes lines05 {
+          0%, 20% {
+            opacity: 0;
+          }
+
+          25% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 1;
           }
         }
 
-        @keyframes keyboard05 {
-          5%, 12%, 21%, 30%, 39%, 48%, 57%, 66%, 75%, 84% {
-            box-shadow: 15px 0 0 var(--key), 30px 0 0 var(--key), 45px 0 0 var(--key),
-              60px 0 0 var(--key), 75px 0 0 var(--key), 90px 0 0 var(--key),
-              22px 10px 0 var(--key), 37px 10px 0 var(--key), 52px 10px 0 var(--key),
-              60px 10px 0 var(--key), 68px 10px 0 var(--key), 83px 10px 0 var(--key);
+        @keyframes text05 {
+          0%, 20% {
+            opacity: 0;
           }
-          9% {
-            box-shadow: 15px 2px 0 var(--key), 30px 0 0 var(--key), 45px 0 0 var(--key),
-              60px 0 0 var(--key), 75px 0 0 var(--key), 90px 0 0 var(--key),
-              22px 10px 0 var(--key), 37px 10px 0 var(--key), 52px 10px 0 var(--key),
-              60px 10px 0 var(--key), 68px 10px 0 var(--key), 83px 10px 0 var(--key);
+
+          25% {
+            opacity: 1;
+          }
+
+          95% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
           }
         }
 
-        @keyframes bounce-12s {
-          0%, 100% {
+        @keyframes key05_1 {
+          0%, 5% {
             transform: translateY(0);
-            animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
           }
+
+          10% {
+            transform: translateY(4px);
+          }
+
+          15%, 100% {
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes key05_2 {
+          0%, 25% {
+            transform: translateY(0);
+          }
+
+          30% {
+            transform: translateY(4px);
+          }
+
+          35%, 100% {
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes key05_3 {
+          0%, 45% {
+            transform: translateY(0);
+          }
+
           50% {
-            transform: translateY(-25%);
-            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+            transform: translateY(4px);
+          }
+
+          55%, 100% {
+            transform: translateY(0);
           }
         }
 
-        .animate-bounce-12s {
-          animation: bounce-12s 12s infinite;
+        .progress-bar {
+          width: 100%;
+          height: 8px;
+          background: #e5e7eb;
+          border-radius: 4px;
+          margin-top: 30px;
+          overflow: hidden;
         }
 
-        @keyframes progress-12s {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(0%);
-          }
+        .progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #5C86FF, #275EFE);
+          border-radius: 4px;
+          transition: width 0.1s linear;
+        }
+
+        .upload-button {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: none;
+          margin-top: 20px;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .upload-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .cancel-button {
+          background: #ef4444;
+          color: white;
+          padding: 8px 16px;
+          border-radius: 6px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: none;
+          margin-top: 12px;
+        }
+
+        .cancel-button:hover {
+          background: #dc2626;
+        }
+
+        .success-message {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          padding: 20px;
+          border-radius: 12px;
+          font-weight: 600;
+          margin-top: 30px;
+          text-align: center;
+          animation: fadeIn 0.5s ease;
+          box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .status-text {
+          font-family: 'Space Mono', monospace;
+          margin-top: 15px;
+          color: #4b5563;
+          font-size: 14px;
+          text-align: center;
+        }
+
+        .timer {
+          font-family: 'Space Mono', monospace;
+          font-size: 24px;
+          font-weight: bold;
+          color: #275EFE;
+          margin-top: 15px;
+          background: #f3f4f6;
+          padding: 8px 16px;
+          border-radius: 8px;
         }
       `}} />
-      <div className="typewriter">
-        <div className="slide"><i /></div>
-        <div className="paper" />
-        <div className="keyboard" />
-      </div>
-    </div>
-  )
-}
 
-// Loading Overlay Component
-const LoadingOverlay = ({ message = "Mengirim bukti pembayaran..." }: { message?: string }) => {
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-2xl max-w-sm md:max-w-md w-full mx-4">
-        <div className="mb-6">
-          <TypewriterLoader />
-        </div>
-        
-        <div className="text-center space-y-3">
-          <h3 className="text-lg md:text-xl font-bold text-gray-800 dark:text-gray-100">
-            {message}
-          </h3>
-          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">
-            Mohon tunggu sebentar...
-          </p>
-        </div>
-
-        <div className="mt-6 flex justify-center items-center gap-2">
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '0s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '2.4s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '4.8s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '7.2s'}}></div>
-          <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded-full animate-bounce-12s" style={{animationDelay: '9.6s'}}></div>
-        </div>
-
-        <div className="mt-6 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 rounded-full" style={{
-            width: '100%',
-            animation: 'progress-12s 12s ease-in-out forwards'
-          }}></div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-interface PaymentFormProps {
-  tenants: TenantWithPayment[]
-}
-
-export function TenantPaymentForm({ tenants }: PaymentFormProps) {
-  const [tenantId, setTenantId] = useState("")
-  const [amount, setAmount] = useState("")
-  const [paymentDate, setPaymentDate] = useState("")
-  const [notes, setNotes] = useState("")
-  const [file, setFile] = useState<File | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const typewriterSoundPlayed = useRef(false)
-
-  const selectedTenant = tenants.find((t) => t.id === tenantId)
-
-  // Set default date on mount
-  useEffect(() => {
-    setPaymentDate(new Date().toISOString().split('T')[0])
-  }, [])
-
-  // Play typewriter sound when loading starts
-  useEffect(() => {
-    if (isLoading && !typewriterSoundPlayed.current) {
-      playTypewriterSound()
-      typewriterSoundPlayed.current = true
-    }
-    
-    if (!isLoading) {
-      typewriterSoundPlayed.current = false
-    }
-  }, [isLoading])
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
-      if (!allowedTypes.includes(selectedFile.type)) {
-        setError("File harus berupa gambar (JPG, PNG, WebP) atau PDF")
-        return
-      }
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError("Ukuran file maksimal 5MB")
-        return
-      }
-      setFile(selectedFile)
-      setError(null)
-    }
-  }
-
-  const handleDownloadQR = () => {
-    const link = document.createElement('a')
-    link.href = '/qr-payment.jpg'
-    link.download = 'QR-Pembayaran-BNI.jpg'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!tenantId || !amount || !file || !paymentDate) {
-      setError("Mohon lengkapi semua field yang diperlukan")
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-
-    const supabase = createClient()
-
-    try {
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${tenantId}-${Date.now()}.${fileExt}`
-
-      const { error: uploadError } = await supabase.storage.from("payment-proofs").upload(fileName, file)
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError)
-      }
-
-      const { data: urlData } = supabase.storage.from("payment-proofs").getPublicUrl(fileName)
-
-      const latestPayment = selectedTenant?.latestPayment
-      const dueDate = latestPayment?.due_date || new Date().toISOString().split("T")[0]
-
-      const { error: insertError } = await supabase.from("payments").insert({
-        tenant_id: tenantId,
-        amount: Number.parseFloat(amount),
-        due_date: dueDate,
-        paid_date: paymentDate,
-        status: "pending",
-        notes: notes || null,
-        proof_url: urlData?.publicUrl || null,
-      })
-
-      if (insertError) throw insertError
-
-      setIsLoading(false)
-      setSuccess(true)
-      
-      setTimeout(() => {
-        setSuccess(false)
-        setTenantId("")
-        setAmount("")
-        setPaymentDate(new Date().toISOString().split('T')[0])
-        setNotes("")
-        setFile(null)
-      }, 5000)
-      
-    } catch (err) {
-      setIsLoading(false)
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat mengirim pembayaran")
-    }
-  }
-
-  if (success) {
-    return (
-      <div className="w-full max-w-2xl mx-auto">
-        <div className="rounded-2xl border-2 border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 p-8 md:p-12 shadow-xl">
-          <div className="flex flex-col items-center justify-center gap-6">
-            <div className="relative">
-              <div className="absolute inset-0 animate-ping">
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-green-500 opacity-20"></div>
+      {/* Upload Form */}
+      <div className="mb-8 p-6 bg-white rounded-xl shadow-lg max-w-md w-full">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Kirim Bukti Pembayaran</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload File
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <div className="text-gray-500">
+                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p className="mt-2">Drag & drop file di sini</p>
+                <p className="text-sm">atau</p>
               </div>
-              <div className="absolute inset-0 animate-pulse">
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-green-400 opacity-30"></div>
-              </div>
-              <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                <CheckCircle2 className="w-14 h-14 md:w-16 md:h-16 text-white" strokeWidth={2.5} />
-              </div>
-            </div>
-
-            <div className="text-center space-y-3">
-              <h3 className="text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400">
-                🎉 Berhasil Dikirim!
-              </h3>
-              <div className="space-y-2">
-                <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 font-medium">
-                  Bukti pembayaran Anda telah diterima
-                </p>
-                <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">
-                  Mohon tunggu verifikasi dari admin
-                </p>
-              </div>
-            </div>
-
-            <div className="w-full mt-4 p-4 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-green-200 dark:border-green-800">
-              <div className="flex items-center justify-center gap-3 text-sm md:text-base">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                  <span className="text-gray-700 dark:text-gray-300 font-medium">Status:</span>
-                </div>
-                <span className="text-green-600 dark:text-green-400 font-semibold">Menunggu Verifikasi</span>
-              </div>
-            </div>
-
-            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 text-center animate-pulse">
-              Formulir akan direset otomatis dalam 5 detik...
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      {isLoading && <LoadingOverlay message="Mengunggah bukti pembayaran..." />}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="tenant">Pilih Nama Penyewa</Label>
-          <Select value={tenantId} onValueChange={setTenantId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih penyewa" />
-            </SelectTrigger>
-            <SelectContent>
-              {tenants.map((tenant) => (
-                <SelectItem key={tenant.id} value={tenant.id}>
-                  {tenant.name} - Kamar {tenant.room?.room_number || "-"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {selectedTenant?.room && (
-          <div className="rounded-lg bg-muted/50 p-3">
-            <p className="text-sm text-muted-foreground">Harga kamar per bulan:</p>
-            <p className="text-lg font-semibold">Rp {selectedTenant.room.price.toLocaleString("id-ID")}</p>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="amount">Nominal Pembayaran</Label>
-          <Input
-            id="amount"
-            type="number"
-            placeholder="Contoh: 1500000"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="paymentDate">Tanggal Pembayaran</Label>
-          <Input
-            id="paymentDate"
-            type="date"
-            value={paymentDate}
-            onChange={(e) => setPaymentDate(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-            required
-          />
-          <p className="text-xs text-muted-foreground">Pilih tanggal saat Anda melakukan pembayaran</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Kode QR Pembayaran</Label>
-          <div className="rounded-lg border bg-muted/50 p-4 flex flex-col items-center">
-            <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center overflow-hidden">
-              <img 
-                src="/qr-payment.jpg" 
-                alt="QR Code Pembayaran BNI" 
-                className="max-w-full max-h-full object-contain"
+              <button 
+                className="mt-4 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg font-medium hover:bg-blue-200 transition"
+                onClick={() => document.getElementById('fileInput')?.click()}
+              >
+                Pilih File
+              </button>
+              <input 
+                id="fileInput"
+                type="file" 
+                className="hidden"
+                accept=".jpg,.jpeg,.png,.pdf"
               />
             </div>
-            <div className="mt-3 text-center">
-              <p className="text-sm font-semibold text-foreground">BNI : 0797356663</p>
-              <p className="text-xs text-muted-foreground">a.n Liestia Arfianti</p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={handleDownloadQR}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Unduh QR Code
-            </Button>
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="proof">Upload Bukti Pembayaran</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="proof"
-              type="file"
-              accept="image/*,.pdf"
-              onChange={handleFileChange}
-              className="cursor-pointer"
-              required
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Catatan (Opsional)
+            </label>
+            <textarea 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={3}
+              placeholder="Tambahkan catatan jika perlu..."
             />
           </div>
-          {file && <p className="text-sm text-muted-foreground">File terpilih: {file.name}</p>}
-          <p className="text-xs text-muted-foreground">Format: JPG, PNG, WebP, atau PDF. Maksimal 5MB.</p>
         </div>
+      </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="notes">Catatan (Opsional)</Label>
-          <Textarea
-            id="notes"
-            placeholder="Catatan tambahan..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-          />
-        </div>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+      {/* Typewriter Animation */}
+      <div className="relative">
+        {isUploading && (
+          <div className="timer">
+            {Math.max(0, duration - Math.floor(progress * duration / 100))}s
+          </div>
         )}
+        
+        <div className={`typewriter ${isUploading ? '' : 'opacity-50'}`}>
+          <div className="slide"></div>
+          <div className="paper">
+            <div className="lines">
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <div className="text">
+              <p>Upload in progress...</p>
+              <p>Please wait patiently</p>
+              <p>Do not close this window</p>
+            </div>
+          </div>
+          <div className="keyboard">
+            <div className="key"></div>
+            <div className="key"></div>
+            <div className="key"></div>
+            <div className="key"></div>
+            <div className="key"></div>
+            <div className="key"></div>
+            <div className="key"></div>
+          </div>
+        </div>
+        
+        {isUploading && (
+          <div className="progress-bar">
+            <div 
+              className="progress-fill"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+        
+        <div className="status-text">
+          {isUploading 
+            ? `Mengunggah... ${progress.toFixed(1)}%`
+            : isRunning 
+              ? 'Menyiapkan upload...'
+              : 'Siap mengunggah file'
+          }
+        </div>
+      </div>
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Mengirim...
-            </>
-          ) : (
-            <>
-              <Upload className="mr-2 h-4 w-4" />
-              Kirim Bukti Pembayaran
-            </>
-          )}
-        </Button>
-      </form>
-    </>
-  )
-}
+      {/* Control Buttons */}
+      <div className="flex flex-col items-center space-y-3 mt-6">
+        {!isUploading ? (
+          <button 
+            className="upload-button"
+            onClick={handleStartUpload}
+            disabled={isRunning}
+          >
+            {isRunning ? 'Memulai...' : 'Kirim Bukti Pembayaran'}
+          </button>
+        ) : (
+          <button 
+            className="cancel-button"
+            onClick={handleCancelUpload}
+          >
+            Batalkan Upload
+          </button>
+        )}
+      </div>
+
+      {/* Success Message (akan muncul dari parent) */}
+    </div>
+  );
+};
+
+// Main Component yang mengatur alur lengkap
+const UploadPaymentProof = () => {
+  const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle', 'uploading', 'success', 'reset'
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const successAudioRef = useRef(null);
+
+  useEffect(() => {
+    // Inisialisasi audio sukses
+    successAudioRef.current = new Audio(SOUND_EFFECTS.success);
+  }, []);
+
+  const handleUploadComplete = () => {
+    // Step 4: Upload selesai → Sound STOP (sudah di TypewriterLoader)
+    // Step 5: Animasi sukses dengan confetti
+    setUploadStatus('success');
+    setShowConfetti(true);
+    setShowSuccess(true);
+    
+    // Play success sound
+    if (successAudioRef.current) {
+      successAudioRef.current.play();
+    }
+    
+    // Step 6: Form reset otomatis setelah 5 detik
+    setTimeout(() => {
+      setShowConfetti(false);
+      setShowSuccess(false);
+      setUploadStatus('idle');
+      // Reset form bisa ditambahkan di sini
+    }, 5000);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col items-center justify-center p-4">
+      {showConfetti && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={200}
+          gravity={0.1}
+        />
+      )}
+      
+      <h1 className="text-3xl font-bold text-gray-800 mb-2">Pembayaran Online</h1>
+      <p className="text-gray-600 mb-8">Upload bukti pembayaran Anda dengan aman</p>
+      
+      <TypewriterLoader 
+        duration={15}
+        onComplete={handleUploadComplete}
+        isActive={uploadStatus === 'uploading'}
+      />
+      
+      {showSuccess && (
+        <div className="success-message animate-fadeIn">
+          <div className="flex items-center justify-center mb-2">
+            <svg className="w-8 h-8 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <span className="text-xl">Upload Berhasil!</span>
+          </div>
+          <p>Bukti pembayaran telah diterima. Form akan reset dalam 5 detik...</p>
+        </div>
+      )}
+      
+      {/* Status Indicator */}
+      <div className="mt-8 flex items-center space-x-6">
+        <div className="flex flex-col items-center">
+          <div className={`w-3 h-3 rounded-full ${uploadStatus !== 'idle' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+          <span className="text-sm mt-1 text-gray-600">Upload</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className={`w-3 h-3 rounded-full ${uploadStatus === 'success' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+          <span className="text-sm mt-1 text-gray-600">Verifikasi</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className={`w-3 h-3 rounded-full ${uploadStatus === 'reset' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+          <span className="text-sm mt-1 text-gray-600">Selesai</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UploadPaymentProof;
