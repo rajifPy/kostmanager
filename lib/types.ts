@@ -65,3 +65,15 @@ export interface TenantWithPayment extends Tenant {
   latestPayment?: Payment
   hasUnpaidPayment?: boolean // Flag for active display
 }
+
+export interface AlumniReview {
+  id: string
+  name: string
+  photo_url: string | null
+  stay_date: string
+  review: string
+  rating: number
+  status: "pending" | "approved" | "rejected"
+  created_at: string
+  updated_at: string
+}
