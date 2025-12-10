@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/tooltip"
 
 // Konfigurasi WhatsApp Admin
-const ADMIN_WHATSAPP = "6281234567890" // Ganti dengan nomor admin (format: 62xxx)
+const ADMIN_WHATSAPP = "6281460326800" // Ganti dengan nomor admin (format: 62xxx)
 const ADMIN_MESSAGE = "Halo Admin KostManager, saya ingin bertanya tentang kost"
 
 export function HomeHeader() {
