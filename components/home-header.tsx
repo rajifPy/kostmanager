@@ -23,7 +23,7 @@ export function HomeHeader() {
         <nav className="hidden md:flex items-center gap-4">
           <ThemeToggle />
           <Link href="/penyewa" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Daftar Penyewa
+            Form Pembayaran Sewa
           </Link>
           <Link href="/auth/login">
             <Button variant="outline" size="sm">
@@ -60,7 +60,7 @@ export function HomeHeader() {
             className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
             onClick={() => setMobileMenuOpen(false)}
           >
-            Daftar Penyewa
+            Form Pembayaran Sewa
           </Link>
           <Link 
             href="/auth/login"
