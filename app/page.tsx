@@ -155,7 +155,7 @@ export default async function HomePage() {
           <div className="mx-auto max-w-4xl overflow-hidden rounded-lg">
             <div className="aspect-video w-full bg-muted">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1255.1761678241812!2d112.7451160807887!3d-7.263362732970625!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7f92cdeef8595%3A0xd38a95482769b82c!2sAlun%20-%20Alun%20Surabaya!5e0!3m2!1sid!2sid!4v1765391771089!5m2!1sid!2sid"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d494.7167774580775!2d112.78926795001105!3d-7.271055619667423!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7fa03aaaaaaab%3A0x95752a937f9f69db!2sGrand%20Peninsula%20Park!5e0!3m2!1sid!2sid!4v1765392127681!5m2!1sid!2sid"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
