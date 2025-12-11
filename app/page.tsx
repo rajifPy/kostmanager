@@ -349,6 +349,23 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ✅ SHARE VIA WHATSAPP — BARU */}
+      <section className="py-10 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-4">
+              <Share2 className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Sebarkan ke Teman</span>
+            </div>
+            <h3 className="text-2xl font-bold mb-3">Temukan Teman Sekost?</h3>
+            <p className="text-muted-foreground mb-8">
+              Bagikan link ini ke grup WA kampus/kantor — siapa tahu ada yang butuh!
+            </p>
+            <ShareButton />
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
