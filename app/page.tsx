@@ -23,16 +23,7 @@ import Link from "next/link";
 
 // ✅ Import Calendar Component
 import { RealtimeCalendar } from "@/components/ui/realtimecalendar";
-
-import dynamic from 'next/dynamic'
-const ShareButton = dynamic(() => import('@/components/share-button'), {
-    ssr: false,
-    loading: () => (
-        <div className="flex justify-center py-6">
-            <div className="h-10 w-48 bg-muted rounded-full animate-pulse" />
-        </div>
-    )
-})
+import { ShareButton } from "@/components/share-button;
 
 const facilities = [
     { icon: Wifi, name: "WiFi Gratis", description: "Internet cepat 24 jam" },
