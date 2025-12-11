@@ -89,6 +89,22 @@ export default async function HomePage() {
                         </a>
                     </div>
 
+                    <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+                      <Link href="/booking">
+                        <Button size="lg">Booking Sekarang</Button>
+                      </Link>
+                      <a href="#kamar">
+                        <Button size="lg" variant="outline">
+                          Cek Ketersediaan
+                        </Button>
+                      </a>
+                      <Link href="/penyewa">
+                        <Button size="lg" variant="outline">
+                          Lihat Daftar Penyewa
+                        </Button>
+                      </Link>
+                    </div>
+
                     {/* Stats */}
                     <div className="mt-12 flex flex-wrap justify-center gap-8">
                         <div className="text-center">
@@ -174,6 +190,24 @@ export default async function HomePage() {
                 </div>
             </section>
 
+            {/* Booking CTA Section */}
+            <section className="bg-primary py-16">
+              <div className="container mx-auto px-4 text-center">
+                <h2 className="text-3xl font-bold text-primary-foreground mb-4">
+                  Siap Booking Kamar?
+                </h2>
+                <p className="text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
+                  Isi formulir booking dan tim kami akan menghubungi Anda dalam 24 jam
+                </p>
+                <Link href="/booking">
+                  <Button size="lg" variant="secondary">
+                    <Building2 className="mr-2 h-5 w-5" />
+                    Booking Kamar Sekarang
+                  </Button>
+                </Link>
+              </div>
+            </section>
+
             {/* Alumni Reviews Section */}
             <section id="cerita-alumni" className="bg-muted/30 py-16">
                 <div className="container mx-auto px-4">
@@ -256,6 +290,7 @@ export default async function HomePage() {
                     </div>
                 </div>
             </section>
+
 
             {/* Footer */}
             <footer className="border-t py-8">
