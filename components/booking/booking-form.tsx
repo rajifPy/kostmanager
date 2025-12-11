@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react"
 import type { Booking } from "@/lib/types"
-import { TruckLoader } from "@/components/ui/truck-loader";
+import { TruckLoader } from "@/components/ui/truck-loader"; // <-- Ini sudah benar
 
 export function BookingForm() {
     const router = useRouter()
@@ -220,16 +220,20 @@ export function BookingForm() {
                 </Alert>
             )}
 
-            {/* === Tambahkan DI LUAR form, atau ganti Button dengan ini === */}
+            {/* Loading Modal dengan TruckLoader */}
             {isLoading && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
                     aria-live="polite"
                 >
                     <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4">
-                        <HamsterLoader
+                        <TruckLoader
                             size="large"
                             message="Mengirim permintaan booking...\nTim kami segera menghubungi Anda!"
+                            showProgress={true}
+                            speed={1.2}
+                            roadLength="medium"
+                            className="w-full h-64" // Custom container size
                         />
                     </div>
                 </div>
