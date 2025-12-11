@@ -1,282 +1,196 @@
 // components/ui/truck-loader.tsx
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 export function TruckLoader({ 
-  size = "large", 
-  message = "Mengirim permintaan booking...",
-  showProgress = true,
-  className = "",
-  speed = 1,
-  fullScreen = false,
-  roadLength = "medium",
+  message = "Mengirim permintaan booking..."
 }: { 
-  size?: "tiny" | "small" | "medium" | "large" | "xlarge"; 
-  message?: string;
-  showProgress?: boolean;
-  className?: string;
-  speed?: number;
-  fullScreen?: boolean;
-  roadLength?: "short" | "medium" | "long";
+  message?: string; 
 }) {
   const [isVisible, setIsVisible] = useState(false);
-  const [progressWidth, setProgressWidth] = useState(0);
-  const progressInterval = useRef<any>(null); // Menggunakan any untuk menghindari NodeJS.Timeout
 
   useEffect(() => {
     setIsVisible(true);
-    
-    if (showProgress) {
-      let progress = 0;
-      progressInterval.current = setInterval(() => {
-        progress += Math.random() * 10 + 5;
-        if (progress > 95) progress = 95;
-        setProgressWidth(progress);
-      }, 400);
-    }
-
-    return () => {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-      }
-    };
-  }, [showProgress]);
-
-  // Animation duration calculation
-  const baseDuration = 2 / speed;
-  const truckAnimationDuration = useMemo(() => {
-    switch(roadLength) {
-      case "short": return baseDuration * 0.7;
-      case "medium": return baseDuration;
-      case "long": return baseDuration * 1.3;
-      default: return baseDuration;
-    }
-  }, [roadLength, baseDuration]);
-
-  // Truck size scaling
-  const truckScale = useMemo(() => {
-    switch(size) {
-      case "tiny": return "scale(0.5)";
-      case "small": return "scale(0.7)";
-      case "medium": return "scale(0.85)";
-      case "large": return "scale(1)";
-      case "xlarge": return "scale(1.15)";
-      default: return "scale(1)";
-    }
-  }, [size]);
-
-  // Responsive container classes
-  const getContainerClasses = () => {
-    switch(size) {
-      case "tiny": return "w-32 h-20 sm:w-40 sm:h-24 md:w-48 md:h-28";
-      case "small": return "w-48 h-28 sm:w-56 sm:h-32 md:w-64 md:h-36 lg:w-72 lg:h-40";
-      case "medium": return "w-64 h-36 sm:w-72 sm:h-40 md:w-80 md:h-44 lg:w-96 lg:h-48 xl:w-104 xl:h-52";
-      case "large": return "w-80 h-44 sm:w-96 sm:h-48 md:w-104 md:h-52 lg:w-120 lg:h-56 xl:w-120 xl:h-60";
-      case "xlarge": return "w-96 h-48 sm:w-104 sm:h-52 md:w-112 md:h-56 lg:w-128 lg:h-60 xl:w-136 xl:h-64";
-      default: return "w-80 h-44 sm:w-96 sm:h-48 md:w-104 md:h-52 lg:w-120 lg:h-56";
-    }
-  };
-
-  // Responsive font size for message
-  const getMessageSize = () => {
-    switch(size) {
-      case "tiny": return "text-xs sm:text-sm";
-      case "small": return "text-sm sm:text-base";
-      case "medium": return "text-base sm:text-lg";
-      case "large": return "text-lg sm:text-xl md:text-2xl";
-      case "xlarge": return "text-xl sm:text-2xl md:text-3xl";
-      default: return "text-base sm:text-lg";
-    }
-  };
+  }, []);
 
   if (!isVisible) return null;
 
   return (
-    <div className={cn(
-      "flex flex-col items-center justify-center gap-4 p-4",
-      fullScreen && "min-h-screen bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm"
-    )}>
-      {/* Road and Truck Container */}
-      <div className={cn("relative overflow-hidden", getContainerClasses(), className)}>
-        {/* Road */}
-        <div className="absolute bottom-0 left-0 w-full h-6 bg-gray-700 dark:bg-gray-800">
-          {/* Road lines */}
-          <div 
-            className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2"
-            style={{ 
-              background: "repeating-linear-gradient(90deg, transparent, transparent 20px, #fbbf24 20px, #fbbf24 40px)",
-              animation: `roadLine 0.5s linear infinite`
-            }}
-          />
+    <div className="flex flex-col items-center justify-center gap-4 p-4 w-full max-w-xs">
+      {/* Kontainer utama — responsif lebar */}
+      <div className="relative w-full aspect-[3/1] max-w-[320px]">
+        {/* Badan truk — skala otomatis */}
+        <div className="absolute inset-0 flex items-end justify-center">
+          <div className="truck-body w-[85%] animate-motion">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 198 93"
+              className="w-full h-auto"
+            >
+              <path
+                strokeWidth={2.5}
+                stroke="#282828"
+                fill="#F83D3D"
+                d="M135 22.5H177.264C178.295 22.5 179.22 23.133 179.594 24.0939L192.33 56.8443C192.442 57.1332 192.5 57.4404 192.5 57.7504V89C192.5 90.3807 191.381 91.5 190 91.5H135C133.619 91.5 132.5 90.3807 132.5 89V25C132.5 23.6193 133.619 22.5 135 22.5Z"
+              />
+              <path
+                strokeWidth={2.5}
+                stroke="#282828"
+                fill="#7D7C7C"
+                d="M146 33.5H181.741C182.779 33.5 183.709 34.1415 184.078 35.112L190.538 52.112C191.16 53.748 189.951 55.5 188.201 55.5H146C144.619 55.5 143.5 54.3807 143.5 53V36C143.5 34.6193 144.619 33.5 146 33.5Z"
+              />
+              <path
+                strokeWidth={1.5}
+                stroke="#282828"
+                fill="#282828"
+                d="M150 65C150 65.39 149.763 65.8656 149.127 66.2893C148.499 66.7083 147.573 67 146.5 67C145.427 67 144.501 66.7083 143.873 66.2893C143.237 65.8656 143 65.39 143 65C143 64.61 143.237 64.1344 143.873 63.7107C144.501 63.2917 145.427 63 146.5 63C147.573 63 148.499 63.2917 149.127 63.7107C149.763 64.1344 150 64.61 150 65Z"
+              />
+              <rect
+                strokeWidth={1.5}
+                stroke="#282828"
+                fill="#FFFCAB"
+                rx={0.8}
+                height={5.6}
+                width={4}
+                y={63}
+                x={187}
+              />
+              <rect
+                strokeWidth={1.5}
+                stroke="#282828"
+                fill="#282828"
+                rx={0.8}
+                height={8.8}
+                width={3.2}
+                y={81}
+                x={193}
+              />
+              <rect
+                strokeWidth={2.5}
+                stroke="#282828"
+                fill="#DFDFDF"
+                rx="2"
+                height={72}
+                width={96.8}
+                y="1.5"
+                x="6.5"
+              />
+              <rect
+                strokeWidth={1.5}
+                stroke="#282828"
+                fill="#DFDFDF"
+                rx={1.6}
+                height={3.2}
+                width={4.8}
+                y={84}
+                x={1}
+              />
+            </svg>
+          </div>
         </div>
 
-        {/* Moving Truck */}
+        {/* Ban — posisi fleksibel */}
+        <div className="absolute bottom-0 w-full flex justify-between px-4">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 30 30"
+            className="w-5 h-5 sm:w-6 sm:h-6"
+          >
+            <circle
+              strokeWidth={2.5}
+              stroke="#282828"
+              fill="#282828"
+              r="13.5"
+              cy={15}
+              cx={15}
+            />
+            <circle fill="#DFDFDF" r={7} cy={15} cx={15} />
+          </svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 30 30"
+            className="w-5 h-5 sm:w-6 sm:h-6"
+          >
+            <circle
+              strokeWidth={2.5}
+              stroke="#282828"
+              fill="#282828"
+              r="13.5"
+              cy={15}
+              cx={15}
+            />
+            <circle fill="#DFDFDF" r={7} cy={15} cx={15} />
+          </svg>
+        </div>
+
+        {/* Jalan — 100% lebar, proporsional */}
+        <div className="absolute bottom-0 w-full h-1 bg-gray-800 rounded">
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+            {/* Garis putus-putus responsif */}
+            <div 
+              className="absolute h-full bg-white"
+              style={{
+                width: '12%',
+                left: '100%',
+                animation: 'road 10s linear infinite',
+              }}
+            />
+            <div 
+              className="absolute h-full bg-white"
+              style={{
+                width: '6%',
+                left: '120%',
+                animation: 'road 10s linear infinite 0.7s',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Tiang lampu — responsif posisi */}
         <div 
-          className="absolute bottom-4 left-0"
-          style={{ 
-            transform: truckScale,
-            animation: `moveTruck ${truckAnimationDuration}s linear infinite`
+          className="absolute bottom-0 right-0 w-6 h-12 sm:w-8 sm:h-16"
+          style={{
+            animation: 'road 10s linear infinite',
           }}
         >
-          <div className="relative">
-            {/* Truck Body */}
-            <div className="relative w-40 h-14">
-              {/* Main Container */}
-              <div className="absolute left-0 top-0 w-28 h-14 bg-blue-600 dark:bg-blue-700 rounded-lg">
-                {/* Container Details */}
-                <div className="absolute top-1 left-1 w-5 h-10 bg-blue-700 dark:bg-blue-800 rounded" />
-                <div className="absolute top-1 right-1 w-5 h-10 bg-blue-700 dark:bg-blue-800 rounded" />
-                <div className="absolute top-1/2 left-1/4 w-1.5 h-0.5 bg-blue-800 dark:bg-blue-900 -translate-y-1/2" />
-                <div className="absolute top-1/2 left-1/2 w-1.5 h-0.5 bg-blue-800 dark:bg-blue-900 -translate-y-1/2" />
-                <div className="absolute top-1/2 right-1/4 w-1.5 h-0.5 bg-blue-800 dark:bg-blue-900 -translate-y-1/2" />
-              </div>
-
-              {/* Cab */}
-              <div className="absolute left-24 top-0 w-16 h-10 bg-red-600 dark:bg-red-700 rounded-t-lg">
-                {/* Windshield */}
-                <div className="absolute top-0.5 right-1 w-10 h-6 bg-blue-300/60 dark:bg-blue-400/40 rounded-sm" />
-                {/* Side Window */}
-                <div className="absolute top-1 left-1 w-4 h-3 bg-blue-300/60 dark:bg-blue-400/40 rounded" />
-                {/* Headlights */}
-                <div className="absolute bottom-0 left-1 w-2 h-1 bg-yellow-400 rounded-t" />
-                <div className="absolute bottom-0 right-1 w-2 h-1 bg-yellow-400 rounded-t" />
-              </div>
-
-              {/* Wheels */}
-              {[6, 24, 32].map((left, index) => (
-                <div 
-                  key={index}
-                  className="absolute -bottom-2"
-                  style={{ 
-                    left: `${left}px`,
-                    animation: `rotateWheel ${truckAnimationDuration / 2}s linear infinite`
-                  }}
-                >
-                  <div className="w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center">
-                    <div className="w-3 h-3 bg-gray-700 rounded-full" />
-                    <div className="absolute w-4 h-0.5 bg-gray-600 rounded-full" style={{ transformOrigin: 'center' }} />
-                    <div className="absolute w-4 h-0.5 bg-gray-600 rounded-full" style={{ transform: 'rotate(45deg)', transformOrigin: 'center' }} />
-                    <div className="absolute w-4 h-0.5 bg-gray-600 rounded-full" style={{ transform: 'rotate(90deg)', transformOrigin: 'center' }} />
-                    <div className="absolute w-4 h-0.5 bg-gray-600 rounded-full" style={{ transform: 'rotate(135deg)', transformOrigin: 'center' }} />
-                  </div>
-                </div>
-              ))}
-
-              {/* Exhaust Pipe */}
-              <div className="absolute -top-1 right-1 w-1.5 h-3 bg-gray-700 rounded-t" />
-              <div 
-                className="absolute -top-4 right-1 w-0.5 h-3 bg-gray-600 rounded-t" 
-                style={{ animation: 'puff 0.5s ease-in-out infinite' }} 
-              />
-            </div>
-          </div>
+          <svg
+            viewBox="0 0 100 200"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-full h-full"
+          >
+            <path
+              fill="#282828"
+              d="M50 0v10a2 2 0 1 0 4 0V5l10 20v165a5 5 0 0 1-5 5H46a5 5 0 0 1-5-5V25L50 5z"
+            />
+            <circle cx="52" cy="25" r="3" fill="#FFD700" />
+          </svg>
         </div>
       </div>
 
-      {/* CSS Animations */}
-      <style jsx global>{`
-        @keyframes roadLine {
-          from { transform: translateX(0); }
-          to { transform: translateX(-40px); }
+      <p className="text-center text-gray-700 dark:text-gray-300 text-sm sm:text-base font-medium">
+        {message}
+      </p>
+
+      {/* Animasi responsif */}
+      <style jsx>{`
+        @keyframes motion {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(2px); }
         }
 
-        @keyframes moveTruck {
-          0% {
-            transform: translateX(-100%) ${truckScale};
-          }
-          100% {
-            transform: translateX(100%) ${truckScale};
-          }
+        @keyframes road {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
         }
 
-        @keyframes rotateWheel {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        @keyframes puff {
-          0%, 100% {
-            opacity: 0.3;
-            transform: translateY(0);
-          }
-          50% {
-            opacity: 0.8;
-            transform: translateY(-2px);
-          }
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 640px) {
-          .absolute.bottom-4.left-0 {
-            animation-duration: ${truckAnimationDuration * 1.2}s !important;
-          }
-        }
-        
-        @media (prefers-reduced-motion: reduce) {
-          .absolute.bottom-4.left-0,
-          .absolute.-bottom-2,
-          .absolute.top-1\\/2,
-          .absolute.-top-4.right-1 {
-            animation: none !important;
-          }
-          
-          .absolute.bottom-4.left-0 {
-            transform: translateX(0) ${truckScale} !important;
-          }
+        .truck-body {
+          animation: motion 0.8s ease-in-out infinite;
         }
       `}</style>
-
-      {/* Message */}
-      {message && (
-        <p className={cn(
-          "font-medium text-gray-700 dark:text-gray-300 text-center transition-opacity duration-300",
-          getMessageSize(),
-          "max-w-xs sm:max-w-sm md:max-w-md"
-        )}>
-          {message}
-        </p>
-      )}
-      
-      {/* Progress Bar */}
-      {showProgress && (
-        <div className="w-full max-w-xs sm:max-w-sm md:max-w-md">
-          <div className="h-1.5 sm:h-2 bg-gray-200 dark:bg-gray-700/50 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 rounded-full transition-all duration-300 ease-out"
-              style={{ width: `${progressWidth}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center mt-1.5 sm:mt-2">
-            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              {progressWidth < 100 ? `${Math.round(progressWidth)}%` : '99%'}
-            </span>
-            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              {progressWidth < 30 ? 'Memuat...' : 
-               progressWidth < 60 ? 'Dalam perjalanan...' : 
-               progressWidth < 90 ? 'Hampir sampai...' : 
-               'Menyelesaikan...'}
-            </span>
-          </div>
-        </div>
-      )}
-      
-      {/* Additional Info */}
-      {fullScreen && (
-        <div className="text-center space-y-2 mt-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 max-w-[280px]">
-            🚚 Truk pengiriman sedang dalam perjalanan...
-          </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            Proses ini memakan waktu beberapa detik
-          </p>
-        </div>
-      )}
     </div>
   );
 }
