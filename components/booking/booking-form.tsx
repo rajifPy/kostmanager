@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react"
 import type { Booking } from "@/lib/types"
-import { HamsterLoader } from "@/components/ui/hamster-loader";
+import { TruckLoader } from "@/components/ui/truck-loader";
 
 export function BookingForm() {
     const router = useRouter()
