@@ -1,34 +1,41 @@
-// components/ui/hamster-loader.tsx
+// components/ui/truck-loader.tsx
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { cn } from "@/lib/utils";
 
-export function HamsterLoader({ 
+export function TruckLoader({ 
   size = "large", 
   message = "Mengirim permintaan booking...",
   showProgress = true,
-  className = ""
+  className = "",
+  speed = 1,
+  fullScreen = false,
+  roadLength = "medium", // Panjang jalan
 }: { 
-  size?: "small" | "medium" | "large" | "xlarge"; 
+  size?: "tiny" | "small" | "medium" | "large" | "xlarge"; 
   message?: string;
   showProgress?: boolean;
   className?: string;
+  speed?: number; // 0.5 = lambat, 1 = normal, 2 = cepat
+  fullScreen?: boolean;
+  roadLength?: "short" | "medium" | "long"; // Panjang jalan animasi
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const [progressWidth, setProgressWidth] = useState(0);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const animationDuration = useRef<number>(2 / speed); // Lebih lama untuk truk bergerak
 
   useEffect(() => {
     setIsVisible(true);
     
-    // Progress animation simulation
     if (showProgress) {
       let progress = 0;
       progressInterval.current = setInterval(() => {
-        progress += Math.random() * 15;
+        progress += Math.random() * 10 + 5; // 5-15%
         if (progress > 95) progress = 95;
         setProgressWidth(progress);
-      }, 300);
+      }, 400);
     }
 
     return () => {
@@ -38,313 +45,328 @@ export function HamsterLoader({
     };
   }, [showProgress]);
 
+  useEffect(() => {
+    animationDuration.current = 2 / speed;
+  }, [speed]);
+
   if (!isVisible) return null;
 
-  // Responsive size classes based on screen
-  const containerClass = `relative ${className} ${
-    size === "xlarge" 
-      ? "w-40 h-40 sm:w-56 sm:h-56 md:w-64 md:h-64 lg:w-72 lg:h-72" 
-      : size === "large" 
-      ? "w-32 h-32 sm:w-44 sm:h-44 md:w-48 md:h-48 lg:w-56 lg:h-56"
-      : size === "medium"
-      ? "w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-44 lg:h-44"
-      : "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32"
-  }`;
+  // Responsive size classes
+  const containerClass = cn(
+    "relative overflow-hidden",
+    className,
+    {
+      "w-32 h-20 xs:w-40 xs:h-24 sm:w-48 sm:h-28": size === "tiny",
+      "w-48 h-28 xs:w-56 xs:h-32 sm:w-64 sm:h-36 md:w-72 md:h-40": size === "small",
+      "w-64 h-36 xs:w-72 xs:h-40 sm:w-80 sm:h-44 md:w-96 md:h-48 lg:w-104 lg:h-52": size === "medium",
+      "w-80 h-44 xs:w-96 xs:h-48 sm:w-104 sm:h-52 md:w-112 md:h-56 lg:w-120 lg:h-60": size === "large",
+      "w-96 h-48 xs:w-104 xs:h-52 sm:w-112 sm:h-56 md:w-120 md:h-60 lg:w-128 lg:h-64 xl:w-136 xl:h-68": size === "xlarge",
+    }
+  );
+
+  // Road length based on container
+  const roadWidth = useMemo(() => {
+    switch(roadLength) {
+      case "short": return "200%";
+      case "medium": return "300%";
+      case "long": return "400%";
+      default: return "300%";
+    }
+  }, [roadLength]);
+
+  // Animation duration based on road length
+  const truckAnimationDuration = useMemo(() => {
+    const baseDuration = animationDuration.current;
+    switch(roadLength) {
+      case "short": return baseDuration * 0.7;
+      case "medium": return baseDuration;
+      case "long": return baseDuration * 1.3;
+      default: return baseDuration;
+    }
+  }, [roadLength, animationDuration]);
+
+  // Truck size scaling
+  const truckScale = useMemo(() => {
+    switch(size) {
+      case "tiny": return "scale(0.5)";
+      case "small": return "scale(0.7)";
+      case "medium": return "scale(0.85)";
+      case "large": return "scale(1)";
+      case "xlarge": return "scale(1.15)";
+      default: return "scale(1)";
+    }
+  }, [size]);
 
   // Responsive font size for message
-  const messageSize = 
-    size === "xlarge" ? "text-base sm:text-lg md:text-xl" :
-    size === "large" ? "text-sm sm:text-base md:text-lg" :
-    size === "medium" ? "text-xs sm:text-sm md:text-base" :
-    "text-xs sm:text-sm";
+  const messageSize = useMemo(() => {
+    switch(size) {
+      case "tiny": return "text-xs xs:text-sm";
+      case "small": return "text-sm xs:text-base";
+      case "medium": return "text-base sm:text-lg";
+      case "large": return "text-lg sm:text-xl md:text-2xl";
+      case "xlarge": return "text-xl sm:text-2xl md:text-3xl";
+      default: return "text-base sm:text-lg";
+    }
+  }, [size]);
+
+  const wrapperClass = cn(
+    "flex flex-col items-center justify-center gap-4 p-4",
+    {
+      "min-h-screen bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm": fullScreen,
+    }
+  );
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 p-4">
-      {/* Hamster Wheel Container */}
-      <div className={containerClass}>
-        <div 
-          className="wheel-and-hamster"
-          style={{ 
-            fontSize: size === "xlarge" ? "1.25em" : 
-                     size === "large" ? "1em" : 
-                     size === "medium" ? "0.875em" : "0.75em",
-            width: "100%",
-            height: "100%"
-          }}
-          aria-hidden="true"
-          role="status"
-          aria-label="Loading animation"
-        >
-          <div className="wheel" />
-          <div className="hamster">
-            <div className="hamster__body">
-              <div className="hamster__head">
-                <div className="hamster__ear" />
-                <div className="hamster__eye" />
-                <div className="hamster__nose" />
-              </div>
-              <div className="hamster__limb hamster__limb--fr" />
-              <div className="hamster__limb hamster__limb--fl" />
-              <div className="hamster__limb hamster__limb--br" />
-              <div className="hamster__limb hamster__limb--bl" />
-              <div className="hamster__tail" />
-            </div>
-          </div>
-          <div className="spoke" />
+    <div className={wrapperClass}>
+      {/* Road and Truck Container */}
+      <div className={cn("relative", containerClass)}>
+        {/* Road */}
+        <div className="absolute bottom-0 left-0 w-full h-8 bg-gray-700 dark:bg-gray-800">
+          {/* Road lines */}
+          <div 
+            className="absolute top-1/2 left-0 h-1 w-full -translate-y-1/2 bg-yellow-400 animate-road-line"
+            style={{ 
+              background: "repeating-linear-gradient(90deg, transparent, transparent 20px, yellow 20px, yellow 40px)" 
+            }}
+          />
+          <style jsx>{`
+            @keyframes roadLine {
+              from { transform: translateX(0); }
+              to { transform: translateX(-40px); }
+            }
+            .animate-road-line {
+              animation: roadLine 0.5s linear infinite;
+            }
+          `}</style>
         </div>
 
-        {/* Inline CSS with responsive improvements */}
+        {/* Animated Background (optional clouds) */}
+        <div className="absolute top-2 left-full w-16 h-8 bg-white/30 rounded-full animate-cloud" />
+        <div className="absolute top-6 left-full w-12 h-6 bg-white/20 rounded-full animate-cloud-delayed" />
+
+        {/* Moving Truck */}
+        <div 
+          className="absolute bottom-8 left-0 truck-animation"
+          style={{ 
+            transform: truckScale,
+            animationDuration: `${truckAnimationDuration}s`
+          }}
+        >
+          {/* Truck Container */}
+          <div className="relative">
+            {/* Truck Body */}
+            <div className="relative w-48 h-16">
+              {/* Main Container (Back) */}
+              <div className="absolute left-0 top-0 w-32 h-16 bg-blue-600 rounded-lg">
+                {/* Container Details */}
+                <div className="absolute top-2 left-2 w-6 h-12 bg-blue-700 rounded" />
+                <div className="absolute top-2 right-2 w-6 h-12 bg-blue-700 rounded" />
+                <div className="absolute top-1/2 left-1/4 w-2 h-1 bg-blue-800 -translate-y-1/2" />
+                <div className="absolute top-1/2 left-1/2 w-2 h-1 bg-blue-800 -translate-y-1/2" />
+                <div className="absolute top-1/2 right-1/4 w-2 h-1 bg-blue-800 -translate-y-1/2" />
+              </div>
+
+              {/* Cab */}
+              <div className="absolute left-28 top-0 w-20 h-12 bg-red-600 rounded-t-lg">
+                {/* Windshield */}
+                <div className="absolute top-1 right-2 w-12 h-8 bg-blue-300/60 rounded-sm" />
+                {/* Side Window */}
+                <div className="absolute top-2 left-2 w-6 h-5 bg-blue-300/60 rounded" />
+                {/* Headlights */}
+                <div className="absolute bottom-0 left-2 w-3 h-2 bg-yellow-400 rounded-t" />
+                <div className="absolute bottom-0 right-2 w-3 h-2 bg-yellow-400 rounded-t" />
+              </div>
+
+              {/* Wheels */}
+              <div className="absolute -bottom-3 left-6 wheel-animation">
+                <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center">
+                  <div className="w-4 h-4 bg-gray-700 rounded-full" />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(45deg)' }} />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(90deg)' }} />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(135deg)' }} />
+                </div>
+              </div>
+              
+              <div className="absolute -bottom-3 right-6 wheel-animation">
+                <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center">
+                  <div className="w-4 h-4 bg-gray-700 rounded-full" />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(45deg)' }} />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(90deg)' }} />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(135deg)' }} />
+                </div>
+              </div>
+
+              {/* Front Wheel (Cab) */}
+              <div className="absolute -bottom-3 left-36 wheel-animation">
+                <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center">
+                  <div className="w-4 h-4 bg-gray-700 rounded-full" />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(45deg)' }} />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(90deg)' }} />
+                  <div className="absolute w-6 h-1 bg-gray-600 rounded-full hub-spoke" style={{ transform: 'rotate(135deg)' }} />
+                </div>
+              </div>
+
+              {/* Exhaust Pipe */}
+              <div className="absolute -top-2 right-2 w-2 h-4 bg-gray-700 rounded-t" />
+              <div className="absolute -top-6 right-2 w-1 h-4 bg-gray-600 rounded-t animate-exhaust" />
+            </div>
+          </div>
+        </div>
+
+        {/* Inline CSS */}
         <style jsx>{`
-          .wheel-and-hamster {
-            --dur: 1s;
-            position: relative;
-            display: block;
-            margin: 0 auto;
-          }
-          
-          .wheel, .hamster, .hamster div, .spoke { 
-            position: absolute; 
-          }
-          
-          .wheel, .spoke { 
-            border-radius: 50%; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-          }
-          
-          .wheel { 
-            background: radial-gradient(100% 100% at center, hsla(0,0%,60%,0) 47.8%, hsl(0,0%,60%) 48%); 
-            z-index: 2; 
-          }
-          
-          .hamster { 
-            animation: hamster var(--dur) ease-in-out infinite; 
-            top: 50%; 
-            left: 50%; 
-            width: 3.5em; 
-            height: 1.875em; 
-            transform: translate(-50%, -50%) rotate(4deg);
-            transform-origin: 50% 0; 
-            z-index: 1; 
-          }
-          
-          .hamster__head { 
-            animation: hamsterHead var(--dur) ease-in-out infinite; 
-            background: hsl(30,90%,55%); 
-            border-radius: 70% 30% 0 100% / 40% 25% 25% 60%; 
-            box-shadow: 0 -0.125em 0 hsl(30,90%,80%) inset, 
-                        0.375em -0.775em 0 hsl(30,90%,90%) inset; 
-            top: 0; 
-            left: -1em; 
-            width: 1.375em; 
-            height: 1.25em; 
-            transform-origin: 100% 50%; 
-          }
-          
-          .hamster__ear { 
-            animation: hamsterEar var(--dur) ease-in-out infinite; 
-            background: hsl(0,90%,85%); 
-            border-radius: 50%; 
-            box-shadow: -0.125em 0 hsl(30,90%,55%) inset; 
-            top: -0.125em; 
-            right: -0.125em; 
-            width: 0.375em; 
-            height: 0.375em; 
-            transform-origin: 50% 75%; 
-          }
-          
-          .hamster__eye { 
-            animation: hamsterEye var(--dur) linear infinite; 
-            background-color: hsl(0,0%,0%); 
-            border-radius: 50%; 
-            top: 0.1875em; 
-            left: 0.625em; 
-            width: 0.25em; 
-            height: 0.25em; 
-          }
-          
-          .hamster__nose { 
-            background: hsl(0,90%,75%); 
-            border-radius: 35% 65% 85% 15% / 70% 50% 50% 30%; 
-            top: 0.375em; 
-            left: 0; 
-            width: 0.1em; 
-            height: 0.125em; 
-          }
-          
-          .hamster__body { 
-            animation: hamsterBody var(--dur) ease-in-out infinite; 
-            background: hsl(30,90%,90%); 
-            border-radius: 50% 30% 50% 30% / 15% 60% 40% 40%; 
-            box-shadow: 0.05em 0.375em 0 hsl(30,90%,55%) inset, 
-                        0.075em -0.25em 0 hsl(30,90%,80%) inset; 
-            top: 0.125em; 
-            left: 1em; 
-            width: 2.25em; 
-            height: 1.5em; 
-            transform-origin: 17% 50%; 
-            transform-style: preserve-3d; 
-          }
-          
-          .hamster__limb--fr, .hamster__limb--fl { 
-            clip-path: polygon(0 0,100% 0,70% 80%,60% 100%,0% 100%,40% 80%); 
-            top: 1em; 
-            left: 0.25em; 
-            width: 0.5em; 
-            height: 0.75em; 
-            transform-origin: 50% 0; 
-          }
-          
-          .hamster__limb--fr { 
-            animation: hamsterFRLimb var(--dur) linear infinite; 
-            background: linear-gradient(hsl(30,90%,80%) 80%, hsl(0,90%,75%) 80%); 
-            transform: rotate(15deg) translateZ(-1px); 
-          }
-          
-          .hamster__limb--fl { 
-            animation: hamsterFLLimb var(--dur) linear infinite; 
-            background: linear-gradient(hsl(30,90%,90%) 80%, hsl(0,90%,85%) 80%); 
-            transform: rotate(15deg); 
-          }
-          
-          .hamster__limb--br, .hamster__limb--bl { 
-            border-radius: 0.375em 0.375em 0 0; 
-            clip-path: polygon(0 0,100% 0,100% 30%,70% 90%,70% 100%,30% 100%,40% 90%,0% 30%); 
-            top: 0.5em; 
-            left: 1.4em; 
-            width: 0.75em; 
-            height: 1.25em; 
-            transform-origin: 50% 30%; 
-          }
-          
-          .hamster__limb--br { 
-            animation: hamsterBRLimb var(--dur) linear infinite; 
-            background: linear-gradient(hsl(30,90%,80%) 90%, hsl(0,90%,75%) 90%); 
-            transform: rotate(-25deg) translateZ(-1px); 
-          }
-          
-          .hamster__limb--bl { 
-            animation: hamsterBLLimb var(--dur) linear infinite; 
-            background: linear-gradient(hsl(30,90%,90%) 90%, hsl(0,90%,85%) 90%); 
-            transform: rotate(-25deg); 
-          }
-          
-          .hamster__tail { 
-            animation: hamsterTail var(--dur) linear infinite; 
-            background: hsl(0,90%,85%); 
-            border-radius: 0.125em 50% 50% 0.125em; 
-            box-shadow: 0 -0.1em 0 hsl(0,90%,75%) inset; 
-            top: 0.75em; 
-            right: -0.25em; 
-            width: 0.5em; 
-            height: 0.25em; 
-            transform: rotate(30deg) translateZ(-1px); 
-            transform-origin: 0.125em 0.125em; 
-          }
-          
-          .spoke { 
-            animation: spoke var(--dur) linear infinite; 
-            background: radial-gradient(100% 100% at center, hsl(0,0%,60%) 4.8%, hsla(0,0%,60%,0) 5%), 
-                        linear-gradient(hsla(0,0%,55%,0) 46.9%, hsl(0,0%,65%) 47% 52.9%, hsla(0,0%,65%,0) 53%) 50% 50% / 99% 99% no-repeat; 
+          .truck-animation {
+            animation: moveTruck linear infinite;
+            animation-duration: var(--truck-duration, 4s);
           }
 
-          /* Animations */
-          @keyframes hamster { 
-            from, to { transform: translate(-50%, -50%) rotate(4deg); } 
-            50% { transform: translate(-50%, -50%) rotate(0); } 
-          }
-          
-          @keyframes hamsterHead { 
-            from, 25%, 50%, 75%, to { transform: rotate(0); } 
-            12.5%, 37.5%, 62.5%, 87.5% { transform: rotate(8deg); } 
-          }
-          
-          @keyframes hamsterEye { 
-            from, 90%, to { transform: scaleY(1); } 
-            95% { transform: scaleY(0); } 
-          }
-          
-          @keyframes hamsterEar { 
-            from, 25%, 50%, 75%, to { transform: rotate(0); } 
-            12.5%, 37.5%, 62.5%, 87.5% { transform: rotate(12deg); } 
-          }
-          
-          @keyframes hamsterBody { 
-            from, 25%, 50%, 75%, to { transform: rotate(0); } 
-            12.5%, 37.5%, 62.5%, 87.5% { transform: rotate(-2deg); } 
-          }
-          
-          @keyframes hamsterFRLimb { 
-            from, 25%, 50%, 75%, to { transform: rotate(50deg) translateZ(-1px); } 
-            12.5%, 37.5%, 62.5%, 87.5% { transform: rotate(-30deg) translateZ(-1px); } 
-          }
-          
-          @keyframes hamsterFLLimb { 
-            from, 25%, 50%, 75%, to { transform: rotate(-30deg); } 
-            12.5%, 37.5%, 62.5%, 87.5% { transform: rotate(50deg); } 
-          }
-          
-          @keyframes hamsterBRLimb { 
-            from, 25%, 50%, 75%, to { transform: rotate(-60deg) translateZ(-1px); } 
-            12.5%, 37.5%, 62.5%, 87.5% { transform: rotate(20deg) translateZ(-1px); } 
-          }
-          
-          @keyframes hamsterBLLimb { 
-            from, 25%, 50%, 75%, to { transform: rotate(20deg); } 
-            12.5%, 37.5%, 62.5%, 87.5% { transform: rotate(-60deg); } 
-          }
-          
-          @keyframes hamsterTail { 
-            from, 25%, 50%, 75%, to { transform: rotate(30deg) translateZ(-1px); } 
-            12.5%, 37.5%, 62.5%, 87.5% { transform: rotate(10deg) translateZ(-1px); } 
-          }
-          
-          @keyframes spoke { 
-            from { transform: rotate(0); } 
-            to { transform: rotate(-1turn); } 
-          }
-
-          /* Mobile optimizations */
-          @media (max-width: 640px) {
-            .wheel-and-hamster {
-              --dur: 1.2s; /* Slightly slower on mobile for better performance */
+          @keyframes moveTruck {
+            0% {
+              transform: translateX(-100%) scale(var(--truck-scale, 1));
+            }
+            100% {
+              transform: translateX(100vw) scale(var(--truck-scale, 1));
             }
           }
-          
+
+          .wheel-animation {
+            animation: rotateWheel linear infinite;
+            animation-duration: calc(var(--truck-duration, 4s) / 2);
+          }
+
+          @keyframes rotateWheel {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          .hub-spoke {
+            transform-origin: center;
+          }
+
+          .animate-exhaust {
+            animation: puff 0.5s ease-in-out infinite;
+          }
+
+          @keyframes puff {
+            0%, 100% {
+              opacity: 0.3;
+              transform: translateY(0);
+            }
+            50% {
+              opacity: 0.8;
+              transform: translateY(-2px);
+            }
+          }
+
+          .animate-cloud {
+            animation: cloudMove 20s linear infinite;
+            animation-delay: 0s;
+          }
+
+          .animate-cloud-delayed {
+            animation: cloudMove 25s linear infinite;
+            animation-delay: 5s;
+          }
+
+          @keyframes cloudMove {
+            0% {
+              transform: translateX(0);
+            }
+            100% {
+              transform: translateX(-100vw);
+            }
+          }
+
+          /* Responsive adjustments */
+          @media (max-width: 640px) {
+            .truck-animation {
+              animation-duration: calc(var(--truck-duration, 4s) * 1.2);
+            }
+          }
+
           @media (prefers-reduced-motion: reduce) {
-            .wheel-and-hamster,
-            .wheel-and-hamster * {
-              animation-duration: 0.01ms !important;
-              animation-iteration-count: 1 !important;
-              transition-duration: 0.01ms !important;
+            .truck-animation,
+            .wheel-animation,
+            .animate-road-line,
+            .animate-exhaust,
+            .animate-cloud {
+              animation: none !important;
+            }
+            
+            .truck-animation {
+              transform: translateX(0) scale(var(--truck-scale, 1));
+            }
+          }
+
+          /* Dark mode adjustments */
+          @media (prefers-color-scheme: dark) {
+            .truck-animation .bg-blue-600 {
+              background-color: #1d4ed8;
+            }
+            .truck-animation .bg-red-600 {
+              background-color: #dc2626;
             }
           }
         `}</style>
       </div>
 
-      {/* Message with responsive font sizes */}
+      {/* Message */}
       {message && (
-        <p className={`${messageSize} font-medium text-gray-700 dark:text-gray-300 text-center max-w-xs sm:max-w-sm md:max-w-md transition-opacity duration-300`}>
+        <p className={cn(
+          "font-medium text-gray-700 dark:text-gray-300 text-center transition-opacity duration-300",
+          messageSize,
+          "max-w-xs sm:max-w-sm md:max-w-md"
+        )}>
           {message}
         </p>
       )}
       
-      {/* Progress Bar - Responsive width */}
+      {/* Progress Bar */}
       {showProgress && (
         <div className="w-full max-w-xs sm:max-w-sm md:max-w-md">
-          <div className="h-1.5 sm:h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-1.5 xs:h-2 sm:h-2.5 bg-gray-200 dark:bg-gray-700/50 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-300 ease-out"
+              className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progressWidth}%` }}
             />
           </div>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center mt-2">
-            {progressWidth < 100 ? `${Math.round(progressWidth)}%` : 'Hampir selesai!'}
+          <div className="flex justify-between items-center mt-1.5 xs:mt-2">
+            <p className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
+              {progressWidth < 100 ? `${Math.round(progressWidth)}%` : '99%'}
+            </p>
+            <p className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
+              {progressWidth < 30 ? 'Memuat paket...' : 
+               progressWidth < 60 ? 'Dalam perjalanan...' : 
+               progressWidth < 90 ? 'Hampir sampai...' : 
+               'Mengirim...'}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Additional Info */}
+      {fullScreen && (
+        <div className="text-center space-y-2 mt-4">
+          <p className="text-xs xs:text-sm text-gray-500 dark:text-gray-400 max-w-[280px]">
+            🚚 Truk pengiriman sedang dalam perjalanan...
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Proses ini memakan waktu beberapa detik
           </p>
         </div>
       )}
     </div>
   );
+}
+
+// Fallback jika cn tidak tersedia
+function cn(...classes: (string | undefined | boolean)[]) {
+  return classes.filter(Boolean).join(' ');
 }
