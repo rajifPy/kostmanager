@@ -78,31 +78,22 @@ export default async function HomePage() {
                     <p className="mx-auto mt-4 max-w-2xl text-pretty text-lg text-muted-foreground">
                         Kost dengan fasilitas lengkap, keamanan 24 jam, dan harga terjangkau. Cocok untuk mahasiswa dan pekerja.
                     </p>
+                    
+                    {/* CTA Buttons - Hanya satu set */}
                     <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-                        <Link href="/penyewa">
-                            <Button size="lg">Lihat Daftar Penyewa</Button>
+                        <Link href="/booking">
+                            <Button size="lg">Booking Sekarang</Button>
                         </Link>
                         <a href="#kamar">
                             <Button size="lg" variant="outline">
                                 Cek Ketersediaan
                             </Button>
                         </a>
-                    </div>
-
-                    <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-                      <Link href="/booking">
-                        <Button size="lg">Booking Sekarang</Button>
-                      </Link>
-                      <a href="#kamar">
-                        <Button size="lg" variant="outline">
-                          Cek Ketersediaan
-                        </Button>
-                      </a>
-                      <Link href="/penyewa">
-                        <Button size="lg" variant="outline">
-                          Lihat Daftar Penyewa
-                        </Button>
-                      </Link>
+                        <Link href="/penyewa">
+                            <Button size="lg" variant="outline">
+                                Lihat Daftar Penyewa
+                            </Button>
+                        </Link>
                     </div>
 
                     {/* Stats */}
@@ -177,6 +168,15 @@ export default async function HomePage() {
                                             <span className="text-sm font-normal text-muted-foreground">/bulan</span>
                                         </p>
                                         {room.facilities && <p className="mt-2 text-sm text-muted-foreground">{room.facilities}</p>}
+                                        
+                                        {/* Tombol booking untuk kamar vacant */}
+                                        {room.status === "vacant" && (
+                                            <Link href="/booking" className="mt-4 block">
+                                                <Button className="w-full" size="sm">
+                                                    Booking Kamar Ini
+                                                </Button>
+                                            </Link>
+                                        )}
                                     </CardContent>
                                 </Card>
                             ))}
@@ -192,20 +192,20 @@ export default async function HomePage() {
 
             {/* Booking CTA Section */}
             <section className="bg-primary py-16">
-              <div className="container mx-auto px-4 text-center">
-                <h2 className="text-3xl font-bold text-primary-foreground mb-4">
-                  Siap Booking Kamar?
-                </h2>
-                <p className="text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
-                  Isi formulir booking dan tim kami akan menghubungi Anda dalam 24 jam
-                </p>
-                <Link href="/booking">
-                  <Button size="lg" variant="secondary">
-                    <Building2 className="mr-2 h-5 w-5" />
-                    Booking Kamar Sekarang
-                  </Button>
-                </Link>
-              </div>
+                <div className="container mx-auto px-4 text-center">
+                    <h2 className="text-3xl font-bold text-primary-foreground mb-4">
+                        Siap Booking Kamar?
+                    </h2>
+                    <p className="text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
+                        Isi formulir booking dan tim kami akan menghubungi Anda dalam 24 jam
+                    </p>
+                    <Link href="/booking">
+                        <Button size="lg" variant="secondary">
+                            <Building2 className="mr-2 h-5 w-5" />
+                            Booking Kamar Sekarang
+                        </Button>
+                    </Link>
+                </div>
             </section>
 
             {/* Alumni Reviews Section */}
@@ -290,7 +290,6 @@ export default async function HomePage() {
                     </div>
                 </div>
             </section>
-
 
             {/* Footer */}
             <footer className="border-t py-8">
