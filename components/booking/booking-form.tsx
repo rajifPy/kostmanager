@@ -220,19 +220,24 @@ export function BookingForm() {
                 </Alert>
             )}
 
-            {/* Full-screen loader saat mengirim */}
-            {isLoading && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
-                    aria-live="polite"
-                >
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4">
-                        <TruckLoader
-                            message="Mohon tunggu...\nTruk konfirmasi sedang di jalan! 🚚💨"
-                        />
+            <div className="relative h-12">
+                {/* Full-screen loader saat mengirim */}
+                {isLoading && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border max-w-md w-full">
+                            <TruckLoader
+                                message="Mohon tunggu...\nTim kami sedang memproses permintaan Anda! 🚚"
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {!isLoading && (
+                    <Button type="submit" className="w-full h-12" disabled={isLoading}>
+                        Kirim Permintaan Booking
+                    </Button>
+                )}
+            </div>
 
             <p className="text-xs text-center text-muted-foreground">
                 Dengan mengirim formulir ini, Anda setuju untuk dihubungi oleh tim kami
