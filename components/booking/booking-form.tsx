@@ -220,20 +220,27 @@ export function BookingForm() {
                 </Alert>
             )}
 
-            <div className="relative h-12">
-                {isLoading ? (
-                    <div className="flex items-center justify-center gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                        <HamsterLoader size="sm" />
-                        <span className="text-sm font-medium text-muted-foreground">
-                            Mengirim...
-                        </span>
+            {/* === Tambahkan DI LUAR form, atau ganti Button dengan ini === */}
+            {isLoading && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                    aria-live="polite"
+                >
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4">
+                        <HamsterLoader
+                            size="large"
+                            message="Mengirim permintaan booking...\nTim kami segera menghubungi Anda!"
+                        />
                     </div>
-                ) : (
-                    <Button type="submit" className="w-full h-12" disabled={isLoading}>
-                        Kirim Permintaan Booking
-                    </Button>
-                )}
-            </div>
+                </div>
+            )}
+
+            {/* Tetap tampilkan form & button saat tidak loading */}
+            {!isLoading && (
+                <Button type="submit" className="w-full h-12" disabled={isLoading}>
+                    Kirim Permintaan Booking
+                </Button>
+            )}
 
             <p className="text-xs text-center text-muted-foreground">
                 Dengan mengirim formulir ini, Anda setuju untuk dihubungi oleh tim kami
