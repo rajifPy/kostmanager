@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react"
 import type { Booking } from "@/lib/types"
-import { TruckLoader } from "@/components/ui/truck-loader";
+import { HamsterLoader } from "@/components/ui/hamster-loader";
 
 export function BookingForm() {
     const router = useRouter()
@@ -221,17 +221,22 @@ export function BookingForm() {
             )}
 
             <div className="relative h-12">
-                {/* Full-screen loader saat mengirim */}
+                {/* === Tambahkan DI LUAR form, atau ganti Button dengan ini === */}
                 {isLoading && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border max-w-md w-full">
-                            <TruckLoader
-                                message="Mohon tunggu...\nTim kami sedang memproses permintaan Anda! 🚚"
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                        aria-live="polite"
+                    >
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4">
+                            <HamsterLoader
+                                size="large"
+                                message="Mengirim permintaan booking...\nTim kami segera menghubungi Anda!"
                             />
                         </div>
                     </div>
                 )}
 
+                {/* Tetap tampilkan form & button saat tidak loading */}
                 {!isLoading && (
                     <Button type="submit" className="w-full h-12" disabled={isLoading}>
                         Kirim Permintaan Booking
