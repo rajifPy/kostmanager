@@ -18,7 +18,7 @@ export default function BookingPage() {
                 <Building2 className="h-8 w-8 text-primary" />
               </div>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Booking Kamar Kost</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">Ayo Ndang Booking Kamar Kost Rek!</h1>
             <p className="text-muted-foreground">
               Isi formulir di bawah ini dan kami akan menghubungi Anda segera
             </p>
@@ -77,4 +77,5 @@ export default function BookingPage() {
       </footer>
     </div>
   )
+
 }
