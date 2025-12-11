@@ -194,10 +194,10 @@ export default async function HomePage() {
             <section className="bg-primary py-16">
                 <div className="container mx-auto px-4 text-center">
                     <h2 className="text-3xl font-bold text-primary-foreground mb-4">
-                        Siap Booking Kamar?
+                        Ayo Ndang Booking Kamar Rek
                     </h2>
                     <p className="text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
-                        Isi formulir booking dan tim kami akan menghubungi Anda dalam 24 jam
+                        Sat Set Anti Ribet 
                     </p>
                     <Link href="/booking">
                         <Button size="lg" variant="secondary">
