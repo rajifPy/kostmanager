@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react"
 import type { Booking } from "@/lib/types"
-import { TruckLoader } from "@/components/ui/truck-loader"; // <-- Ini sudah benar
+import { TruckLoader } from "@/components/ui/truck-loader";
 
 export function BookingForm() {
     const router = useRouter()
@@ -220,30 +220,18 @@ export function BookingForm() {
                 </Alert>
             )}
 
-            {/* Loading Modal dengan TruckLoader */}
+            {/* Full-screen loader saat mengirim */}
             {isLoading && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
                     aria-live="polite"
                 >
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4">
                         <TruckLoader
-                            size="large"
-                            message="Mengirim permintaan booking...\nTim kami segera menghubungi Anda!"
-                            showProgress={true}
-                            speed={1.2}
-                            roadLength="medium"
-                            className="w-full h-64" // Custom container size
+                            message="Mohon tunggu...\nTruk konfirmasi sedang di jalan! 🚚💨"
                         />
                     </div>
                 </div>
-            )}
-
-            {/* Tetap tampilkan form & button saat tidak loading */}
-            {!isLoading && (
-                <Button type="submit" className="w-full h-12" disabled={isLoading}>
-                    Kirim Permintaan Booking
-                </Button>
             )}
 
             <p className="text-xs text-center text-muted-foreground">
