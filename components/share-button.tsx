@@ -35,21 +35,18 @@ export function ShareButton() {
     }
   };
 
-  // Jangan render apapun sebelum mounted (hindari hydration error)
   if (!isMounted) {
     return null;
   }
 
   return (
     <div className="flex flex-col items-center space-y-4">
-      {/* Tombol Utama: Bagikan via WhatsApp */}
       
         href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="group relative inline-flex items-center justify-center px-8 py-4 rounded-full bg-green-500 hover:bg-green-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
       >
-        {/* Icon WhatsApp sederhana */}
         <svg
           className="w-5 h-5 mr-3"
           fill="currentColor"
@@ -64,7 +61,6 @@ export function ShareButton() {
         </Badge>
       </a>
 
-      {/* Tombol Cadangan: Salin Link */}
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
