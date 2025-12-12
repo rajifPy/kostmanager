@@ -123,3 +123,71 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Add these animations to the end of your globals.css file */
+
+@layer utilities {
+  /* Shake animation for WhatsApp icon */
+  @keyframes shake {
+    0%, 100% { 
+      transform: rotate(0deg) scale(1.15); 
+    }
+    25% { 
+      transform: rotate(15deg) scale(1.15); 
+    }
+    75% { 
+      transform: rotate(-15deg) scale(1.15); 
+    }
+  }
+  
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+  
+  /* Radial gradient utility */
+  .bg-gradient-radial {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 70%);
+  }
+}
+
+/* Responsive adjustments for WhatsApp button */
+@media (max-width: 768px) {
+  .inline-block button {
+    padding: 14px 28px;
+  }
+  
+  .inline-block button span {
+    font-size: 16px;
+  }
+  
+  .inline-block button svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .inline-block button {
+    padding: 12px 24px;
+  }
+  
+  .inline-block button span {
+    font-size: 15px;
+    margin-right: 8px;
+  }
+  
+  .inline-block button svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .inline-block button,
+  .inline-block button svg,
+  .animate-shake {
+    animation: none !important;
+    transition: none !important;
+  }
+}
