@@ -23,7 +23,7 @@ import Link from "next/link";
 
 // ✅ Import Calendar Component
 import { RealtimeCalendar } from "@/components/ui/realtimecalendar";
-import { ShareButton } from "@/components/share-button;
+import { ShareButton } from "@/components/share-button";
 
 const facilities = [
     { icon: Wifi, name: "WiFi Gratis", description: "Internet cepat 24 jam" },
